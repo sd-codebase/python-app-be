@@ -2,9 +2,15 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
+    # Environment
+    environment: str = "development"
+
     # Database
     mongodb_url: str = "mongodb://localhost:27017"
     database_name: str = "education_db"
+
+    # Migration
+    app_for: str = "jee-mains"
 
     # JWT Settings
     jwt_secret_key: str = "your-secret-key-change-in-production"

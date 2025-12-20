@@ -21,6 +21,7 @@ from app.routes import (
     admin_predefined_tests_router,
     predefined_tests_router,
     test_attempts_router,
+    public_router,
 )
 
 
@@ -64,6 +65,7 @@ app.include_router(subjects_router, prefix="/api")
 app.include_router(chapters_router, prefix="/api")
 app.include_router(topics_router, prefix="/api")
 app.include_router(questions_router, prefix="/api")
+app.include_router(public_router, prefix="/api")
 app.include_router(migration_router, prefix="/api")
 app.include_router(set_tests_router, prefix="/api")
 app.include_router(admin_users_router, prefix="/api")

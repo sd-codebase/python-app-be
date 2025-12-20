@@ -11,6 +11,7 @@ from app.routes.admin_users import router as admin_users_router
 from app.routes.admin_predefined_tests import router as admin_predefined_tests_router
 from app.routes.predefined_tests import router as predefined_tests_router
 from app.routes.test_attempts import router as test_attempts_router
+from app.routes.public import router as public_router
 
 __all__ = [
     "courses_router",
@@ -26,4 +27,5 @@ __all__ = [
     "admin_predefined_tests_router",
     "predefined_tests_router",
     "test_attempts_router",
+    "public_router",
 ]

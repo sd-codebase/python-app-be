@@ -6,12 +6,13 @@ from typing import Any
 from uuid import uuid4
 from fastapi import APIRouter, HTTPException
 
+from app.config import settings
 from app.database import get_database
 from app.models.response import APIResponse
 
 router = APIRouter(prefix="/migrate", tags=["migration"])
 
-DATA_DIR = Path(__file__).parent.parent.parent / "data"
+DATA_DIR = Path(__file__).parent.parent.parent / "migration-data" / settings.app_for
 
 
 def parse_json_field(value: Any) -> Any:
@@ -88,7 +89,16 @@ async def run_migration():
     - data/chapters/chapters.json
     - data/topics/topics.json
     - data/questions/*.json (multiple files supported)
+
+    Only available in development environment.
     """
+    # Prevent migration in non-development environments
+    if settings.environment.lower() != "development":
+        raise HTTPException(
+            status_code=403,
+            detail=f"Migration is not allowed in {settings.environment} environment. Only available in development."
+        )
+
     db = get_database()
 
     # ID mappings: old_supabase_id -> new_mongodb_id
@@ -120,7 +130,7 @@ async def run_migration():
 
     for course in courses_data:
         old_id = course.get("id")
-        new_id = str(uuid4())
+        new_id = old_id or str(uuid4())  # Preserve original ID
 
         doc = {
             "id": new_id,
@@ -145,11 +155,11 @@ async def run_migration():
 
     for subject in subjects_data:
         old_id = subject.get("id")
-        new_id = str(uuid4())
+        new_id = old_id or str(uuid4())  # Preserve original ID
 
         # Remap course_id
         old_course_id = subject.get("course_id")
-        new_course_id = id_mappings["courses"].get(old_course_id) if old_course_id else None
+        new_course_id = id_mappings["courses"].get(old_course_id, old_course_id) if old_course_id else None
 
         doc = {
             "id": new_id,
@@ -178,11 +188,11 @@ async def run_migration():
 
     for chapter in chapters_data:
         old_id = chapter.get("id")
-        new_id = str(uuid4())
+        new_id = old_id or str(uuid4())  # Preserve original ID
 
         # Remap subject_id
         old_subject_id = chapter.get("subject_id")
-        new_subject_id = id_mappings["subjects"].get(old_subject_id) if old_subject_id else None
+        new_subject_id = id_mappings["subjects"].get(old_subject_id, old_subject_id) if old_subject_id else None
 
         doc = {
             "id": new_id,
@@ -212,11 +222,11 @@ async def run_migration():
 
     for topic in topics_data:
         old_id = topic.get("id")
-        new_id = str(uuid4())
+        new_id = old_id or str(uuid4())  # Preserve original ID
 
         # Remap chapter_id
         old_chapter_id = topic.get("chapter_id")
-        new_chapter_id = id_mappings["chapters"].get(old_chapter_id) if old_chapter_id else None
+        new_chapter_id = id_mappings["chapters"].get(old_chapter_id, old_chapter_id) if old_chapter_id else None
 
         doc = {
             "id": new_id,
@@ -246,11 +256,12 @@ async def run_migration():
     questions_data = load_json_files_from_dir(questions_dir)
 
     for question in questions_data:
-        new_id = str(uuid4())
+        old_id = question.get("id")
+        new_id = old_id or str(uuid4())  # Preserve original ID
 
         # Remap topic_id
         old_topic_id = question.get("topic_id")
-        new_topic_id = id_mappings["topics"].get(old_topic_id) if old_topic_id else None
+        new_topic_id = id_mappings["topics"].get(old_topic_id, old_topic_id) if old_topic_id else None
 
         # Denormalize parent IDs using in-memory lookups
         chapter_id = None
@@ -310,7 +321,18 @@ async def run_migration():
 
 @router.delete("/clear", response_model=APIResponse)
 async def clear_all_data():
-    """Clear all data from all collections. Use with caution!"""
+    """
+    Clear all data from all collections. Use with caution!
+
+    Only available in development environment.
+    """
+    # Prevent data clearing in non-development environments
+    if settings.environment.lower() != "development":
+        raise HTTPException(
+            status_code=403,
+            detail=f"Clearing data is not allowed in {settings.environment} environment. Only available in development."
+        )
+
     db = get_database()
 
     deleted = {
