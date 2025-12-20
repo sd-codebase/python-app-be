@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from datetime import datetime
 from typing import Any, Optional, List
 from pydantic import BaseModel
@@ -51,6 +53,20 @@ class Question(QuestionBase):
     id: str
     created_at: datetime
     updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class PublicQuestion(BaseModel):
+    """Public question response with limited fields."""
+    id: str
+    question: str
+    options: dict[str, Any] = {}
+    has_integer_answer: bool = False
+    resources_directory: Optional[str] = None
+    level: int = 0
+    pyo: Optional[str] = None
 
     class Config:
         from_attributes = True

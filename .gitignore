@@ -57,6 +57,9 @@ logs/
 # Migration Data
 migration-data/
 
+# Resources Data
+resources-data/
+
 # Supabase
 supabase-schemas/
 
