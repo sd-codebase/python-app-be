@@ -424,6 +424,53 @@ async def get_test_status(
     }
 
 
+@router.get("/by-reference/{test_type}/{reference_id}", response_model=APIResponse[List[TestMetadataResponse]])
+async def get_tests_by_reference(
+    test_type: str,
+    reference_id: str,
+    current_user: dict = Depends(get_current_active_user)
+):
+    """Get all user-generated tests for a specific topic/chapter/subject/course."""
+    db = get_database()
+
+    query = {
+        "user_id": current_user["id"],
+        "test_type": test_type,
+        "reference_id": reference_id,
+    }
+
+    cursor = db.generated_tests.find(query).sort("created_at", -1)
+    tests = await cursor.to_list(length=None)
+
+    return {
+        "data": [
+            {
+                "id": t["id"],
+                "name": t.get("name", ""),
+                "set_test_id": t["set_test_id"],
+                "set_test_name": t["set_test_name"],
+                "test_type": t["test_type"],
+                "reference_id": t["reference_id"],
+                "reference_name": t["reference_name"],
+                "total_questions": t["total_questions"],
+                "generation_status": t["generation_status"],
+                "is_submitted": t["is_submitted"],
+                "score": t.get("score"),
+                "questions": [
+                    {
+                        "question_id": q["question_id"],
+                        "has_integer_answer": q.get("has_integer_answer", False)
+                    }
+                    for q in t.get("questions", [])
+                ],
+                "created_at": t["created_at"],
+            }
+            for t in tests
+        ],
+        "message": "Tests for reference retrieved successfully"
+    }
+
+
 @router.get("", response_model=APIResponse[List[TestMetadataResponse]])
 async def get_user_tests(
     generation_status: Optional[GenerationStatus] = None,
