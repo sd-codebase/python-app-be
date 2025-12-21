@@ -37,7 +37,7 @@ This code will expire in {settings.otp_expire_minutes} minutes.
 If you didn't request this code, please ignore this email.
 
 Best regards,
-Education App Team
+Entrance Mock Tests Team
 """
 
         html = f"""
@@ -58,7 +58,7 @@ Education App Team
         <p>This code will expire in <strong>{settings.otp_expire_minutes} minutes</strong>.</p>
         <p>If you didn't request this code, please ignore this email.</p>
         <div class="footer">
-            <p>Best regards,<br>Education App Team</p>
+            <p>Best regards,<br>Entrance Mock Tests Team</p>
         </div>
     </div>
 </body>
@@ -103,7 +103,7 @@ This code will expire in {settings.otp_expire_minutes} minutes.
 If you didn't request this, please ignore this email and your password will remain unchanged.
 
 Best regards,
-Education App Team
+Entrance Mock Tests Team
 """
 
         html = f"""
@@ -124,7 +124,7 @@ Education App Team
         <p>This code will expire in <strong>{settings.otp_expire_minutes} minutes</strong>.</p>
         <p>If you didn't request this, please ignore this email and your password will remain unchanged.</p>
         <div class="footer">
-            <p>Best regards,<br>Education App Team</p>
+            <p>Best regards,<br>Entrance Mock Tests Team</p>
         </div>
     </div>
 </body>
@@ -175,7 +175,7 @@ With the Pro Plan, you now have access to:
 Start exploring your Pro features now and take your learning to the next level.
 
 Best regards,
-Education App Team
+Entrance Mock Tests Team
 """
 
         html = f"""
@@ -220,7 +220,7 @@ Education App Team
         </p>
 
         <div class="footer">
-            <p>Best regards,<br><strong>Education App Team</strong></p>
+            <p>Best regards,<br><strong>Entrance Mock Tests Team</strong></p>
         </div>
     </div>
 </body>
