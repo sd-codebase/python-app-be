@@ -24,6 +24,7 @@ class SubmitTestRequest(BaseModel):
 # Response Models
 class QuestionResult(BaseModel):
     question_id: str
+    has_integer_answer: bool
     correct_answer: str
     user_answer: Optional[str]
     is_correct: bool

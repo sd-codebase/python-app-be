@@ -104,6 +104,7 @@ async def submit_test(
 
     for q in test["questions"]:
         question_id = q["question_id"]
+        has_integer_answer = q.get("has_integer_answer", False)
         correct_answer = q["answer"]
         user_answer = user_answers_map.get(question_id)
 
@@ -116,6 +117,7 @@ async def submit_test(
 
         results.append({
             "question_id": question_id,
+            "has_integer_answer": has_integer_answer,
             "correct_answer": correct_answer,
             "user_answer": user_answer,
             "is_correct": is_correct,
@@ -242,6 +244,16 @@ async def get_attempt_detail(
     """Get detailed results of a specific attempt."""
     db = get_database()
 
+    # First check if attempt exists at all
+    attempt_exists = await db.test_attempts.find_one({"id": attempt_id})
+
+    if not attempt_exists:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Attempt with ID '{attempt_id}' does not exist"
+        )
+
+    # Then check if it belongs to current user
     attempt = await db.test_attempts.find_one({
         "id": attempt_id,
         "user_id": current_user["id"],
@@ -249,8 +261,8 @@ async def get_attempt_detail(
 
     if not attempt:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Attempt not found"
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have permission to view this attempt"
         )
 
     return {
