@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 from pydantic import BaseModel, EmailStr, Field
 from enum import Enum
 
@@ -88,11 +88,22 @@ class VerifyOTPResponse(BaseModel):
     verified: bool
 
 
+class PlanDetails(BaseModel):
+    name: str
+    features: List[str]
+    test_generation_limit: Optional[int] = None  # None means unlimited
+    question_bank_access: str  # "all" or "basic"
+    analytics_enabled: bool
+    priority_support: bool
+
+
 class UserResponse(BaseModel):
     id: str
     full_name: str
     email: str
     role: str
+    plan: str
+    plan_details: PlanDetails
     is_active: bool
     is_verified: bool
     created_at: datetime
@@ -119,6 +130,7 @@ class UserListResponse(BaseModel):
     full_name: str
     email: str
     role: str
+    plan: str
     is_active: bool
     is_verified: bool
     created_at: datetime
