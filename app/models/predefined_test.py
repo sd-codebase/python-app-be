@@ -67,6 +67,12 @@ class PredefinedTestDetailAdminResponse(BaseModel):
 
 
 # Response Models - User
+class QuestionMinimalPredefined(BaseModel):
+    """Minimal question info without heavy data."""
+    question_id: str
+    has_integer_answer: bool
+
+
 class PredefinedTestUserResponse(BaseModel):
     id: str
     name: str
@@ -78,6 +84,18 @@ class PredefinedTestUserResponse(BaseModel):
     has_attempted: bool = False
     best_score: Optional[float] = None
     attempt_count: int = 0
+
+
+class PredefinedTestMetadataResponse(BaseModel):
+    """Detailed test metadata with minimal question data (similar to user-tests)."""
+    id: str
+    name: str
+    test_type: str
+    reference_id: str
+    reference_name: str
+    time_limit_minutes: int
+    total_questions: int
+    questions: List[QuestionMinimalPredefined]
 
 
 class QuestionForAttempt(BaseModel):

@@ -8,6 +8,7 @@ from app.models.response import APIResponse
 from app.models.predefined_test import (
     PredefinedTestStatus,
     PredefinedTestUserResponse,
+    PredefinedTestMetadataResponse,
     QuestionForAttempt,
     PredefinedTestAttemptResponse,
     SubmitAttemptRequest,
@@ -121,6 +122,55 @@ async def get_tests_by_reference(
     return {
         "data": result,
         "message": "Tests for reference retrieved successfully"
+    }
+
+
+@router.get("/{test_id}", response_model=APIResponse[PredefinedTestMetadataResponse])
+async def get_predefined_test(
+    test_id: str,
+    current_user: dict = Depends(get_current_active_user)
+):
+    """Get predefined test metadata by ID (lightweight response without question details)."""
+    db = get_database()
+
+    # Fetch the predefined test
+    test = await db.predefined_tests.find_one({"id": test_id})
+
+    if not test:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Test with ID '{test_id}' does not exist"
+        )
+
+    # Only return published tests to regular users
+    if test["status"] != PredefinedTestStatus.PUBLISHED.value:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This test is not available"
+        )
+
+    # Prepare minimal question data (just IDs and has_integer_answer)
+    minimal_questions = [
+        {
+            "question_id": q["question_id"],
+            "has_integer_answer": q.get("has_integer_answer", False)
+        }
+        for q in test.get("questions", [])
+    ]
+
+    # Return metadata with minimal question data
+    return {
+        "data": {
+            "id": test["id"],
+            "name": test.get("name", test["set_test_name"]),
+            "test_type": test["test_type"],
+            "reference_id": test["reference_id"],
+            "reference_name": test["reference_name"],
+            "time_limit_minutes": test["time_limit_minutes"],
+            "total_questions": test["total_questions"],
+            "questions": minimal_questions,
+        },
+        "message": "Test metadata retrieved successfully"
     }
 
 
