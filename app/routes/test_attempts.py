@@ -157,6 +157,7 @@ async def submit_test(
         "score": score,
         "max_score": max_score,
         "percentage": round(percentage, 2),
+        "time_taken_seconds": request.time_taken_seconds,
         "started_at": now,  # Using submission time as started time
         "submitted_at": now,
     }
@@ -177,6 +178,7 @@ async def submit_test(
             "max_score": max_score,
             "percentage": round(percentage, 2),
             "negative_marking_applied": negative_marks > 0,
+            "time_taken_seconds": request.time_taken_seconds,
             "results": [QuestionResult(**r).model_dump() for r in results],
             "submitted_at": now,
         },
@@ -281,6 +283,7 @@ async def get_attempt_detail(
             "max_score": attempt["max_score"],
             "percentage": attempt["percentage"],
             "negative_marking_applied": attempt.get("negative_marks", 1.0) > 0,
+            "time_taken_seconds": attempt.get("time_taken_seconds"),
             "results": [QuestionResult(**q).model_dump() for q in attempt["questions"]],
             "submitted_at": attempt["submitted_at"],
         },

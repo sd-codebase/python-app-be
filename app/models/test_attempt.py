@@ -19,6 +19,7 @@ class SubmitTestRequest(BaseModel):
     test_id: str
     test_source: TestSource
     answers: List[SubmitAnswerItem]
+    time_taken_seconds: Optional[int] = None  # Time taken by user in seconds
 
 
 # Response Models
@@ -43,6 +44,7 @@ class SubmitTestResponse(BaseModel):
     max_score: float
     percentage: float
     negative_marking_applied: bool
+    time_taken_seconds: Optional[int] = None
     results: List[QuestionResult]
     submitted_at: datetime
 
@@ -79,5 +81,6 @@ class AttemptDetailResponse(BaseModel):
     max_score: float
     percentage: float
     negative_marking_applied: bool
+    time_taken_seconds: Optional[int] = None
     results: List[QuestionResult]
     submitted_at: datetime
