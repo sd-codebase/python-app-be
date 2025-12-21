@@ -749,6 +749,8 @@ async def submit_test(
         q["user_answer"] = user_answers_map.get(q["question_id"])
         updated_questions.append(q)
 
+    now = datetime.utcnow()
+
     await db.generated_tests.update_one(
         {"id": test_id},
         {
@@ -756,10 +758,41 @@ async def submit_test(
                 "questions": updated_questions,
                 "score": score,
                 "is_submitted": True,
-                "submitted_at": datetime.utcnow(),
+                "submitted_at": now,
             }
         }
     )
+
+    # Create unified attempt record
+    attempt_id = str(uuid4())
+    attempt_doc = {
+        "id": attempt_id,
+        "user_id": current_user["id"],
+        "test_id": test_id,
+        "test_source": "user_generated",  # Distinguish from predefined tests
+        "test_name": test.get("name", ""),
+        "test_type": test["test_type"],
+        "reference_id": test["reference_id"],
+        "reference_name": test["reference_name"],
+        "set_test_id": test["set_test_id"],
+        "set_test_name": test["set_test_name"],
+        "total_questions": total,
+        "correct_count": correct_count,
+        "wrong_count": wrong_count,
+        "unanswered": unanswered,
+        "score": score,
+        "max_score": max_score,
+        "percentage": round(percentage, 2),
+        "marks_per_question": marks_per_question,
+        "negative_marks": negative_marks,
+        "negative_marking_applied": negative_marks > 0,
+        "time_limit_minutes": test["time_limit_minutes"],
+        "started_at": test["created_at"],  # Use test creation as start time
+        "submitted_at": now,
+        "questions": updated_questions,  # Store questions with user answers
+    }
+
+    await db.test_attempts.insert_one(attempt_doc)
 
     return {
         "data": {

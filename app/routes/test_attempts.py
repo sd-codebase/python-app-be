@@ -35,29 +35,30 @@ async def find_test(test_id: str):
     return None, None
 
 
-@router.post("/{test_id}/submit", response_model=APIResponse[SubmitTestResponse])
+@router.post("/submit", response_model=APIResponse[SubmitTestResponse])
 async def submit_test(
-    test_id: str,
     request: SubmitTestRequest,
     current_user: dict = Depends(get_current_active_user)
 ):
     """
-    Submit a test (works for both generated and predefined tests).
+    Unified API to submit a test (works for both user-generated and predefined tests).
+    Takes test_id, test_source, and answers in request body.
     Creates an attempt record in test_attempts collection.
     """
     db = get_database()
 
-    # Find the test
-    test, test_source = await find_test(test_id)
+    test_id = request.test_id
+    test_source = request.test_source
 
-    if not test:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Test not found"
-        )
-
-    # For generated tests, check ownership
-    if test_source == TestSource.GENERATED:
+    # Fetch test based on test_source
+    if test_source == TestSource.USER_GENERATED:
+        test = await db.generated_tests.find_one({"id": test_id})
+        if not test:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User-generated test not found"
+            )
+        # Check ownership
         if test.get("user_id") != current_user["id"]:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -70,13 +71,24 @@ async def submit_test(
                 detail="Test generation is not complete"
             )
 
-    # For predefined tests, check if published
-    if test_source == TestSource.PREDEFINED:
+    elif test_source == TestSource.PREDEFINED:
+        test = await db.predefined_tests.find_one({"id": test_id})
+        if not test:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Predefined test not found"
+            )
+        # Check if published
         if test.get("status") != "published":
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Test is not available"
             )
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid test_source"
+        )
 
     # Get scoring configuration
     marks_per_question = test.get("marks_per_question", 4.0)
@@ -130,6 +142,9 @@ async def submit_test(
         "test_type": test.get("test_type", ""),
         "reference_id": test.get("reference_id", ""),
         "reference_name": test.get("reference_name", ""),
+        "set_test_id": test.get("set_test_id", ""),
+        "set_test_name": test.get("set_test_name", ""),
+        "time_limit_minutes": test.get("time_limit_minutes", 0),
         "total_questions": total,
         "marks_per_question": marks_per_question,
         "negative_marks": negative_marks,
@@ -140,6 +155,7 @@ async def submit_test(
         "score": score,
         "max_score": max_score,
         "percentage": round(percentage, 2),
+        "started_at": now,  # Using submission time as started time
         "submitted_at": now,
     }
 
@@ -160,6 +176,7 @@ async def submit_test(
             "percentage": round(percentage, 2),
             "negative_marking_applied": negative_marks > 0,
             "results": [QuestionResult(**r).model_dump() for r in results],
+            "submitted_at": now,
         },
         "message": "Test submitted successfully"
     }

@@ -5,7 +5,7 @@ from enum import Enum
 
 
 class TestSource(str, Enum):
-    GENERATED = "generated"
+    USER_GENERATED = "user_generated"
     PREDEFINED = "predefined"
 
 
@@ -16,6 +16,8 @@ class SubmitAnswerItem(BaseModel):
 
 
 class SubmitTestRequest(BaseModel):
+    test_id: str
+    test_source: TestSource
     answers: List[SubmitAnswerItem]
 
 
@@ -41,6 +43,7 @@ class SubmitTestResponse(BaseModel):
     percentage: float
     negative_marking_applied: bool
     results: List[QuestionResult]
+    submitted_at: datetime
 
 
 class AttemptHistoryResponse(BaseModel):

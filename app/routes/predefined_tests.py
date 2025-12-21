@@ -498,6 +498,41 @@ async def submit_attempt(
         }
     )
 
+    # Fetch the predefined test details for reference info
+    test = await db.predefined_tests.find_one({"id": attempt["test_id"]})
+
+    # Create unified attempt record
+    unified_attempt_id = str(uuid4())
+    unified_attempt_doc = {
+        "id": unified_attempt_id,
+        "user_id": current_user["id"],
+        "test_id": attempt["test_id"],
+        "predefined_attempt_id": attempt_id,  # Link to original attempt
+        "test_source": "predefined",  # Distinguish from user-generated tests
+        "test_name": attempt["test_name"],
+        "test_type": attempt["test_type"],
+        "reference_id": test.get("reference_id") if test else None,
+        "reference_name": attempt["reference_name"],
+        "set_test_id": test.get("set_test_id") if test else None,
+        "set_test_name": test.get("set_test_name") if test else None,
+        "total_questions": total,
+        "correct_count": correct_count,
+        "wrong_count": wrong_count,
+        "unanswered": unanswered,
+        "score": score,
+        "max_score": max_score,
+        "percentage": round(percentage, 2),
+        "marks_per_question": marks_per_question,
+        "negative_marks": negative_marks,
+        "negative_marking_applied": negative_marks > 0,
+        "time_limit_minutes": attempt["time_limit_minutes"],
+        "started_at": attempt["started_at"],
+        "submitted_at": now,
+        "questions": updated_questions,  # Store questions with user answers
+    }
+
+    await db.test_attempts.insert_one(unified_attempt_doc)
+
     return {
         "data": {
             "attempt_id": attempt_id,
