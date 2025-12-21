@@ -478,6 +478,16 @@ async def get_test(
     """Get a test by ID (without answers for taking the test)."""
     db = get_database()
 
+    # First check if test exists at all
+    test_exists = await db.generated_tests.find_one({"id": test_id})
+
+    if not test_exists:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Test with ID '{test_id}' does not exist"
+        )
+
+    # Then check if it belongs to current user
     test = await db.generated_tests.find_one({
         "id": test_id,
         "user_id": current_user["id"]
@@ -485,8 +495,8 @@ async def get_test(
 
     if not test:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Test not found"
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have permission to access this test"
         )
 
     # Check if test generation is complete
@@ -547,6 +557,16 @@ async def submit_test(
     """Submit a test and calculate score."""
     db = get_database()
 
+    # First check if test exists at all
+    test_exists = await db.generated_tests.find_one({"id": test_id})
+
+    if not test_exists:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Test with ID '{test_id}' does not exist"
+        )
+
+    # Then check if it belongs to current user
     test = await db.generated_tests.find_one({
         "id": test_id,
         "user_id": current_user["id"]
@@ -554,8 +574,8 @@ async def submit_test(
 
     if not test:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Test not found"
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have permission to submit this test"
         )
 
     if test["generation_status"] != GenerationStatus.COMPLETED.value:
@@ -656,6 +676,16 @@ async def delete_test(
     """Delete a test."""
     db = get_database()
 
+    # First check if test exists at all
+    test_exists = await db.generated_tests.find_one({"id": test_id})
+
+    if not test_exists:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Test with ID '{test_id}' does not exist"
+        )
+
+    # Then check if it belongs to current user
     test = await db.generated_tests.find_one({
         "id": test_id,
         "user_id": current_user["id"]
@@ -663,8 +693,8 @@ async def delete_test(
 
     if not test:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Test not found"
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have permission to delete this test"
         )
 
     await db.generated_tests.delete_one({"id": test_id})
