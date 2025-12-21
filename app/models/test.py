@@ -55,6 +55,12 @@ class TestGenerationResponse(BaseModel):
     created_at: datetime
 
 
+class QuestionMinimal(BaseModel):
+    """Minimal question info without heavy data."""
+    question_id: str
+    has_integer_answer: bool
+
+
 class TestMetadataResponse(BaseModel):
     id: str
     name: str  # Auto-generated name
@@ -67,6 +73,7 @@ class TestMetadataResponse(BaseModel):
     generation_status: str
     is_submitted: bool
     score: Optional[float] = None
+    questions: List[QuestionMinimal]  # Just IDs and has_integer_answer
     created_at: datetime
 
 

@@ -441,10 +441,7 @@ async def get_user_tests(
     if is_submitted is not None:
         query["is_submitted"] = is_submitted
 
-    cursor = db.generated_tests.find(
-        query,
-        {"questions": 0}
-    ).sort("created_at", -1).skip(skip).limit(limit)
+    cursor = db.generated_tests.find(query).sort("created_at", -1).skip(skip).limit(limit)
 
     tests = await cursor.to_list(length=limit)
 
@@ -462,6 +459,13 @@ async def get_user_tests(
                 "generation_status": t["generation_status"],
                 "is_submitted": t["is_submitted"],
                 "score": t.get("score"),
+                "questions": [
+                    {
+                        "question_id": q["question_id"],
+                        "has_integer_answer": q.get("has_integer_answer", False)
+                    }
+                    for q in t.get("questions", [])
+                ],
                 "created_at": t["created_at"],
             }
             for t in tests
@@ -470,12 +474,71 @@ async def get_user_tests(
     }
 
 
-@router.get("/{test_id}", response_model=APIResponse[TestDetailResponse])
+@router.get("/{test_id}", response_model=APIResponse[TestMetadataResponse])
 async def get_test(
     test_id: str,
     current_user: dict = Depends(get_current_active_user)
 ):
-    """Get a test by ID (without answers for taking the test)."""
+    """Get test metadata by ID (lightweight response without question details)."""
+    db = get_database()
+
+    # First check if test exists at all
+    test_exists = await db.generated_tests.find_one({"id": test_id})
+
+    if not test_exists:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Test with ID '{test_id}' does not exist"
+        )
+
+    # Then check if it belongs to current user
+    test = await db.generated_tests.find_one({
+        "id": test_id,
+        "user_id": current_user["id"]
+    })
+
+    if not test:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have permission to access this test"
+        )
+
+    # Prepare minimal question data (just IDs and has_integer_answer)
+    minimal_questions = [
+        {
+            "question_id": q["question_id"],
+            "has_integer_answer": q.get("has_integer_answer", False)
+        }
+        for q in test["questions"]
+    ]
+
+    # Return metadata with minimal question data
+    return {
+        "data": {
+            "id": test["id"],
+            "name": test.get("name", ""),
+            "set_test_id": test["set_test_id"],
+            "set_test_name": test["set_test_name"],
+            "test_type": test["test_type"],
+            "reference_id": test["reference_id"],
+            "reference_name": test["reference_name"],
+            "total_questions": test["total_questions"],
+            "generation_status": test["generation_status"],
+            "is_submitted": test["is_submitted"],
+            "score": test.get("score"),
+            "questions": minimal_questions,
+            "created_at": test["created_at"],
+        },
+        "message": "Test metadata retrieved successfully"
+    }
+
+
+@router.get("/{test_id}/take", response_model=APIResponse[TestDetailResponse])
+async def take_test(
+    test_id: str,
+    current_user: dict = Depends(get_current_active_user)
+):
+    """Get full test details with questions for taking the test."""
     db = get_database()
 
     # First check if test exists at all
@@ -503,7 +566,7 @@ async def get_test(
     if test["generation_status"] != GenerationStatus.COMPLETED.value:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Test generation is {test['generation_status']}. Cannot view test yet."
+            detail=f"Test generation is {test['generation_status']}. Cannot take test yet."
         )
 
     # Fetch full question details from questions collection
