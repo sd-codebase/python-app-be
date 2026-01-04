@@ -58,7 +58,7 @@ class TestGenerationResponse(BaseModel):
 class QuestionMinimal(BaseModel):
     """Minimal question info without heavy data."""
     question_id: str
-    has_integer_answer: bool
+    has_integer_answer: Optional[bool] = False
 
 
 class TestMetadataResponse(BaseModel):
