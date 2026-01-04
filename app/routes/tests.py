@@ -3,9 +3,10 @@ import asyncio
 from datetime import datetime
 from uuid import uuid4
 from typing import List, Optional
-from fastapi import APIRouter, HTTPException, Depends, status, BackgroundTasks, Query
+from fastapi import APIRouter, HTTPException, Depends, status, BackgroundTasks, Query, Request
 
 from app.database import get_database
+from app.utils.rate_limiter import limiter
 from app.models.response import APIResponse
 from app.models.test import (
     TestType,
@@ -347,8 +348,10 @@ async def generate_test_background(test_id: str, set_test: dict, reference_id: s
 
 
 @router.post("/generate", response_model=APIResponse[TestGenerationResponse], status_code=202)
+@limiter.limit("4/minute")
 async def generate_test(
-    request: GenerateTestRequest,
+    request: Request,
+    data: GenerateTestRequest,
     background_tasks: BackgroundTasks,
     current_user: dict = Depends(get_current_active_user)
 ):
@@ -358,8 +361,21 @@ async def generate_test(
     """
     db = get_database()
 
+    # Check for unattempted tests limit
+    unattempted_count = await db.generated_tests.count_documents({
+        "user_id": current_user["id"],
+        "generation_status": "completed",
+        "is_submitted": False
+    })
+
+    if unattempted_count >= 3:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You have 3 or more unattempted tests. Please complete or delete existing tests before generating new ones."
+        )
+
     # Fetch the set test format
-    set_test = await db.set_tests.find_one({"id": request.set_test_id})
+    set_test = await db.set_tests.find_one({"id": data.set_test_id})
     if not set_test:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -383,10 +399,10 @@ async def generate_test(
         "id": test_id,
         "user_id": current_user["id"],
         "name": auto_name,  # Auto-generated, will be updated with reference_name
-        "set_test_id": request.set_test_id,
+        "set_test_id": data.set_test_id,
         "set_test_name": set_test["name"],
         "test_type": set_test["test_type"],
-        "reference_id": request.reference_id,
+        "reference_id": data.reference_id,
         "reference_name": "",  # Will be populated by background task
         "time_limit_minutes": set_test["time_limit_minutes"],
         "total_questions": 0,  # Will be populated by background task
@@ -407,7 +423,7 @@ async def generate_test(
         generate_test_background,
         test_id,
         set_test,
-        request.reference_id,
+        data.reference_id,
         current_user["id"]
     )
 
@@ -415,10 +431,10 @@ async def generate_test(
         "data": {
             "id": test_id,
             "name": auto_name,
-            "set_test_id": request.set_test_id,
+            "set_test_id": data.set_test_id,
             "set_test_name": set_test["name"],
             "test_type": set_test["test_type"],
-            "reference_id": request.reference_id,
+            "reference_id": data.reference_id,
             "reference_name": "",
             "generation_status": GenerationStatus.PENDING.value,
             "error_message": None,

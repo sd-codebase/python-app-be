@@ -170,6 +170,13 @@ async def submit_test(
 
     await db.test_attempts.insert_one(attempt_doc)
 
+    # Update is_submitted in the original test document
+    if test_source == TestSource.USER_GENERATED:
+        await db.generated_tests.update_one(
+            {"id": test_id},
+            {"$set": {"is_submitted": True, "submitted_at": now, "score": score}}
+        )
+
     return {
         "data": {
             "attempt_id": attempt_id,
