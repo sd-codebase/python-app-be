@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from uuid import uuid4
 from fastapi import APIRouter, HTTPException, Depends, status, Request
 from fastapi.security import HTTPAuthorizationCredentials
@@ -406,8 +406,22 @@ async def change_password(
 @router.get("/me", response_model=APIResponse[UserResponse])
 async def get_me(current_user: dict = Depends(get_current_active_user)):
     """Get current user profile."""
+    db = get_database()
+
     user_plan = current_user.get("plan", "Free")
     plan_details = get_plan_details(user_plan)
+
+    # Get examYear from app_metadata collection
+    app_metadata = await db.app_metadata.find_one({})
+    exam_year = app_metadata.get("examYear") if app_metadata else None
+
+    # Get course name from courses collection
+    course = await db.courses.find_one({})
+    course_name = course.get("name") if course else None
+
+    # Calculate planExpiry as created_at + 91 days
+    created_at = current_user.get("created_at")
+    plan_expiry = created_at + timedelta(days=91) if created_at else None
 
     return {
         "data": {
@@ -421,6 +435,9 @@ async def get_me(current_user: dict = Depends(get_current_active_user)):
             "is_verified": current_user["is_verified"],
             "created_at": current_user["created_at"],
             "updated_at": current_user["updated_at"],
+            "exam_year": exam_year,
+            "plan_expiry": plan_expiry,
+            "course_name": course_name,
         },
         "message": "User profile retrieved successfully"
     }

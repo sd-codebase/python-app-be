@@ -108,6 +108,9 @@ class UserResponse(BaseModel):
     is_verified: bool
     created_at: datetime
     updated_at: datetime
+    exam_year: Optional[int] = None
+    plan_expiry: Optional[datetime] = None
+    course_name: Optional[str] = None
 
 
 # Admin User Management Models
