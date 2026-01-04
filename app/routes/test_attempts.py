@@ -90,17 +90,15 @@ async def submit_test(
             detail="Invalid test_source"
         )
 
-    # Get scoring configuration
-    marks_per_question = test.get("marks_per_question", 4.0)
-    negative_marks = test.get("negative_marks", 1.0)
-
     # Create user answers map
     user_answers_map = {a.question_id: a.user_answer for a in request.answers}
 
-    # Calculate results
+    # Calculate results with per-question scoring
     results = []
     correct_count = 0
     wrong_count = 0
+    score = 0.0
+    max_score = 0.0
 
     for q in test["questions"]:
         question_id = q["question_id"]
@@ -108,12 +106,20 @@ async def submit_test(
         correct_answer = q["answer"]
         user_answer = user_answers_map.get(question_id)
 
+        # Get per-question scoring (fallback to test-level or defaults)
+        q_marks = q.get("marks_per_question", test.get("marks_per_question", 4.0))
+        q_negative = q.get("negative_marks", test.get("negative_marks", 0.0))
+
+        max_score += q_marks
+
         is_correct = user_answer is not None and user_answer == correct_answer
 
         if is_correct:
             correct_count += 1
+            score += q_marks
         elif user_answer is not None and user_answer != "":
             wrong_count += 1
+            score -= q_negative
 
         results.append({
             "question_id": question_id,
@@ -125,11 +131,11 @@ async def submit_test(
 
     total = test["total_questions"]
     unanswered = total - correct_count - wrong_count
-
-    # Calculate score with negative marking
-    score = (correct_count * marks_per_question) - (wrong_count * negative_marks)
-    max_score = total * marks_per_question
     percentage = (score / max_score) * 100 if max_score > 0 else 0
+
+    # Get representative marks for storing (use first question's marks or test-level)
+    marks_per_question = test["questions"][0].get("marks_per_question", test.get("marks_per_question", 4.0)) if test["questions"] else 4.0
+    negative_marks = test["questions"][0].get("negative_marks", test.get("negative_marks", 0.0)) if test["questions"] else 0.0
 
     # Create attempt record
     attempt_id = str(uuid4())

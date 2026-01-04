@@ -39,6 +39,8 @@ class TestQuestion(BaseModel):
     has_integer_answer: Optional[bool] = False
     answer: str
     user_answer: Optional[str] = None
+    marks_per_question: float = 4.0
+    negative_marks: float = 1.0
 
 
 # Response Models

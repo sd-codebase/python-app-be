@@ -28,6 +28,8 @@ class PredefinedTestQuestion(BaseModel):
     question_id: str
     has_integer_answer: Optional[bool] = False
     answer: str
+    marks_per_question: float = 4.0
+    negative_marks: float = 1.0
 
 
 # Response Models - Admin

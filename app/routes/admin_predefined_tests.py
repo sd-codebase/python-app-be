@@ -194,11 +194,16 @@ async def generate_predefined_test_background(test_id: str, set_test: dict, refe
             else:
                 selected = random.sample(all_questions, min(question_count, len(all_questions)))
 
+            marks_per_question = set_test.get("marks_per_question", 4.0)
+            negative_marks = set_test.get("negative_marks", 1.0)
+
             for q in selected:
                 test_questions.append(PredefinedTestQuestion(
                     question_id=q["id"],
                     has_integer_answer=q.get("has_integer_answer", False),
-                    answer=q["answer"]
+                    answer=q["answer"],
+                    marks_per_question=marks_per_question,
+                    negative_marks=negative_marks
                 ).model_dump())
 
         elif test_type == "chapter":
@@ -215,11 +220,16 @@ async def generate_predefined_test_background(test_id: str, set_test: dict, refe
             else:
                 selected = random.sample(all_questions, min(question_count, len(all_questions)))
 
+            marks_per_question = set_test.get("marks_per_question", 4.0)
+            negative_marks = set_test.get("negative_marks", 1.0)
+
             for q in selected:
                 test_questions.append(PredefinedTestQuestion(
                     question_id=q["id"],
                     has_integer_answer=q.get("has_integer_answer", False),
-                    answer=q["answer"]
+                    answer=q["answer"],
+                    marks_per_question=marks_per_question,
+                    negative_marks=negative_marks
                 ).model_dump())
 
         elif test_type == "subject":
@@ -228,12 +238,16 @@ async def generate_predefined_test_background(test_id: str, set_test: dict, refe
             if not all_questions:
                 raise Exception("No questions available for this subject")
             for section in sections:
+                section_marks = section.get("marks_per_question", 4.0)
+                section_negative = section.get("negative_marks", 0.0)
                 section_questions = select_questions_for_section(all_questions, section)
                 for q in section_questions:
                     test_questions.append(PredefinedTestQuestion(
                         question_id=q["id"],
                         has_integer_answer=q.get("has_integer_answer", False),
-                        answer=q["answer"]
+                        answer=q["answer"],
+                        marks_per_question=section_marks,
+                        negative_marks=section_negative
                     ).model_dump())
 
         elif test_type == "course":
@@ -278,12 +292,16 @@ async def generate_predefined_test_background(test_id: str, set_test: dict, refe
 
                 sections = subject_section.get("sections", [])
                 for section in sections:
+                    section_marks = section.get("marks_per_question", 4.0)
+                    section_negative = section.get("negative_marks", 0.0)
                     section_questions = select_questions_for_section(section_pool, section)
                     for q in section_questions:
                         test_questions.append(PredefinedTestQuestion(
                             question_id=q["id"],
                             has_integer_answer=q.get("has_integer_answer", False),
-                            answer=q["answer"]
+                            answer=q["answer"],
+                            marks_per_question=section_marks,
+                            negative_marks=section_negative
                         ).model_dump())
 
             if not test_questions:
