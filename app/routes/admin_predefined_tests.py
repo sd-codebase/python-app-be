@@ -64,12 +64,16 @@ def select_questions_by_difficulty(questions: List[dict], difficulty: dict) -> L
         difficulty: Dict with L1, L2, L3 counts (e.g., {"L1": 5, "L2": 3, "L3": 2})
 
     Returns:
-        Selected questions matching the difficulty distribution
+        Selected questions matching the difficulty distribution.
+        Falls back to level:null questions if requested level has insufficient questions.
     """
     selected = []
 
     # Group questions by difficulty level (level field is integer: 1, 2, 3)
+    # Questions with level:null go to fallback pool
     by_level = {"L1": [], "L2": [], "L3": []}
+    fallback_pool = []
+
     for q in questions:
         level = q.get("level")
         if level == 1:
@@ -79,15 +83,34 @@ def select_questions_by_difficulty(questions: List[dict], difficulty: dict) -> L
         elif level == 3:
             by_level["L3"].append(q)
         else:
-            # Default unknown levels to L1
-            by_level["L1"].append(q)
+            # level:null goes to fallback pool
+            fallback_pool.append(q)
 
-    # Select required number from each level
+    # Track used fallback question IDs to avoid duplicates across levels
+    used_fallback_ids = set()
+
+    # Select required number from each level, with fallback to level:null
     for level_key, count in difficulty.items():
         if count > 0 and level_key in by_level:
             available = by_level[level_key]
+            selected_count = 0
+
+            # First, select from the requested level
             if available:
-                selected.extend(random.sample(available, min(count, len(available))))
+                take = min(count, len(available))
+                selected.extend(random.sample(available, take))
+                selected_count = take
+
+            # If shortfall, fill from fallback pool (level:null)
+            shortfall = count - selected_count
+            if shortfall > 0 and fallback_pool:
+                available_fallback = [q for q in fallback_pool if q.get("id") not in used_fallback_ids]
+                if available_fallback:
+                    take_fallback = min(shortfall, len(available_fallback))
+                    fallback_selected = random.sample(available_fallback, take_fallback)
+                    selected.extend(fallback_selected)
+                    for q in fallback_selected:
+                        used_fallback_ids.add(q.get("id"))
 
     random.shuffle(selected)
     return selected
