@@ -462,3 +462,36 @@ async def logout(
         "data": None,
         "message": "Logged out successfully"
     }
+
+
+@router.delete("/delete-my-account", response_model=APIResponse)
+async def delete_my_account(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    current_user: dict = Depends(get_current_active_user)
+):
+    """Deactivate the current user's account. User will no longer be able to login."""
+    db = get_database()
+    user_id = current_user["id"]
+
+    # Deactivate the user account
+    await db.users.update_one(
+        {"id": user_id},
+        {
+            "$set": {
+                "is_active": False,
+                "updated_at": datetime.utcnow(),
+            }
+        }
+    )
+
+    # Blacklist the current token to log them out immediately
+    await db.blacklisted_tokens.insert_one({
+        "token": credentials.credentials,
+        "user_id": user_id,
+        "blacklisted_at": datetime.utcnow(),
+    })
+
+    return {
+        "data": None,
+        "message": "Account deactivated successfully"
+    }
