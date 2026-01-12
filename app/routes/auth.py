@@ -26,7 +26,7 @@ from app.utils.security import (
     create_access_token,
 )
 from app.utils.otp import generate_otp, get_otp_expiry, is_otp_valid
-from app.utils.email import send_otp_email, send_password_reset_email, send_pro_plan_upgrade_email
+from app.utils.email import send_otp_email, send_password_reset_email
 from app.dependencies import get_current_active_user, security
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -54,14 +54,18 @@ def get_plan_details(plan_name: str) -> dict:
         "Free": {
             "name": "Free",
             "features": [
-                "Limited test generation (10 per month)",
-                "Basic question banks",
-                "Standard support"
+                "Unlimited test generation",
+                "All premium question banks",
+                "Advanced analytics and performance tracking",
+                "Priority support",
+                "Exclusive learning resources",
+                "Custom test formats",
+                "Progress insights"
             ],
-            "test_generation_limit": 10,
-            "question_bank_access": "basic",
-            "analytics_enabled": False,
-            "priority_support": False
+            "test_generation_limit": None,  # Unlimited
+            "question_bank_access": "all",
+            "analytics_enabled": True,
+            "priority_support": True
         }
     }
     return plans.get(plan_name, plans["Free"])
@@ -112,7 +116,7 @@ async def signup(request: Request, data: SignupRequest):
         "email": data.email,
         "password_hash": None,
         "role": UserRole.USER,
-        "plan": "Pro",  # Default plan for all new users
+        "plan": "Free",  # Default plan for all new users
         "is_active": False,
         "is_verified": False,
         "otp_code": otp,
@@ -217,9 +221,6 @@ async def set_password(request: SetPasswordRequest):
     )
 
     updated_user = await db.users.find_one({"email": request.email})
-
-    # Send Pro plan upgrade email
-    send_pro_plan_upgrade_email(updated_user["email"], updated_user["full_name"])
 
     user_plan = updated_user.get("plan", "Free")
     plan_details = get_plan_details(user_plan)

@@ -123,7 +123,7 @@ async def create_user(
         "email": request.email,
         "password_hash": hash_password(request.password),
         "role": request.role.value,
-        "plan": "Pro",  # Default plan for all new users
+        "plan": "Free",  # Default plan for all new users
         "is_active": request.is_active,
         "is_verified": True,
         "otp_code": None,
