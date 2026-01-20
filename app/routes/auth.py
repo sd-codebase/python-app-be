@@ -430,6 +430,7 @@ async def get_me(current_user: dict = Depends(get_current_active_user)):
             "full_name": current_user["full_name"],
             "email": current_user["email"],
             "role": current_user["role"],
+            "user_type": current_user.get("user_type", "regular"),
             "plan": user_plan,
             "plan_details": plan_details,
             "is_active": current_user["is_active"],
@@ -462,6 +463,45 @@ async def logout(
     return {
         "data": None,
         "message": "Logged out successfully"
+    }
+
+
+@router.post("/anonymous", response_model=APIResponse[TokenResponse])
+@limiter.limit("10/minute")
+async def anonymous_access(request: Request):
+    """Create anonymous/temp user and return access token."""
+    db = get_database()
+    now = datetime.utcnow()
+    user_id = str(uuid4())
+
+    user_doc = {
+        "id": user_id,
+        "full_name": "User",
+        "email": f"temp_{user_id}@anonymous.local",
+        "password_hash": None,
+        "role": UserRole.USER,
+        "user_type": "temp",
+        "plan": "Free",
+        "is_active": True,
+        "is_verified": True,
+        "otp_code": None,
+        "otp_expiry": None,
+        "created_at": now,
+        "updated_at": now,
+    }
+
+    await db.users.insert_one(user_doc)
+
+    # 24-hour token (1440 minutes)
+    access_token = create_access_token(user_id, UserRole.USER, expires_minutes=1440)
+
+    return {
+        "data": {
+            "access_token": access_token,
+            "token_type": "bearer",
+            "role": UserRole.USER,
+        },
+        "message": "Anonymous access granted"
     }
 
 

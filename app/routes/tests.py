@@ -1,6 +1,6 @@
 import random
 import asyncio
-from datetime import datetime
+from datetime import datetime, timedelta
 from uuid import uuid4
 from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Depends, status, BackgroundTasks, Query, Request
@@ -347,6 +347,52 @@ async def generate_test_background(test_id: str, set_test: dict, reference_id: s
         )
 
 
+async def check_temp_user_restrictions(user: dict, set_test: dict) -> None:
+    """Check restrictions for temp users. Raises HTTPException if violated."""
+    if user.get("user_type") != "temp":
+        return
+
+    test_type = set_test["test_type"]
+
+    # COURSE (full mock) not allowed
+    if test_type == "course":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Full mock tests are not available for anonymous users. Please sign up for full access."
+        )
+
+    # CHAPTER not allowed
+    if test_type == "chapter":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Chapter tests are not available for anonymous users. Please sign up for full access."
+        )
+
+    # TOPIC not allowed
+    if test_type == "topic":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Topic tests are not available for anonymous users. Please sign up for full access."
+        )
+
+    # SUBJECT: max 1 per 24 hours
+    if test_type == "subject":
+        db = get_database()
+        twenty_four_hours_ago = datetime.utcnow() - timedelta(hours=24)
+
+        recent_count = await db.generated_tests.count_documents({
+            "user_id": user["id"],
+            "test_type": "subject",
+            "created_at": {"$gte": twenty_four_hours_ago}
+        })
+
+        if recent_count >= 1:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Anonymous users can only generate 1 subject test per 24 hours. Please sign up for unlimited access."
+            )
+
+
 @router.post("/generate", response_model=APIResponse[TestGenerationResponse], status_code=202)
 @limiter.limit("4/minute")
 async def generate_test(
@@ -381,6 +427,9 @@ async def generate_test(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Set test format not found"
         )
+
+    # Check temp user restrictions
+    await check_temp_user_restrictions(current_user, set_test)
 
     test_id = str(uuid4())
     now = datetime.utcnow()

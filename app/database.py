@@ -34,6 +34,19 @@ async def connect_to_mongo():
     # Generated tests indexes
     await db.generated_tests.create_index("id", unique=True)
     await db.generated_tests.create_index("user_id")
+    # Index for efficient rate limiting queries (temp user restrictions)
+    await db.generated_tests.create_index([
+        ("user_id", 1),
+        ("test_type", 1),
+        ("created_at", -1)
+    ])
+
+    # TTL index to auto-delete temp users after 24 hours
+    await db.users.create_index(
+        "created_at",
+        expireAfterSeconds=86400,
+        partialFilterExpression={"user_type": "temp"}
+    )
 
     # Predefined tests indexes
     await db.predefined_tests.create_index("id", unique=True)

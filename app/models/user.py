@@ -9,6 +9,11 @@ class UserRole(str, Enum):
     ADMIN = "admin"
 
 
+class UserType(str, Enum):
+    REGULAR = "regular"
+    TEMP = "temp"
+
+
 class UserBase(BaseModel):
     full_name: str = Field(..., min_length=2, max_length=100)
     email: EmailStr
@@ -21,6 +26,7 @@ class UserCreate(UserBase):
 class User(UserBase):
     id: str
     role: UserRole = UserRole.USER
+    user_type: str = "regular"
     is_active: bool = False
     is_verified: bool = False
     created_at: datetime
@@ -102,6 +108,7 @@ class UserResponse(BaseModel):
     full_name: str
     email: str
     role: str
+    user_type: str = "regular"
     plan: str
     plan_details: PlanDetails
     is_active: bool
@@ -133,6 +140,7 @@ class UserListResponse(BaseModel):
     full_name: str
     email: str
     role: str
+    user_type: str = "regular"
     plan: str
     is_active: bool
     is_verified: bool

@@ -20,9 +20,11 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return bcrypt.checkpw(password_bytes, hashed_bytes)
 
 
-def create_access_token(user_id: str, role: str) -> str:
-    """Create a JWT access token."""
-    expire = datetime.utcnow() + timedelta(minutes=settings.access_token_expire_minutes)
+def create_access_token(user_id: str, role: str, expires_minutes: int = None) -> str:
+    """Create a JWT access token with optional custom expiry."""
+    if expires_minutes is None:
+        expires_minutes = settings.access_token_expire_minutes
+    expire = datetime.utcnow() + timedelta(minutes=expires_minutes)
     payload = {
         "sub": user_id,
         "role": role,
