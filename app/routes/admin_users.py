@@ -18,19 +18,68 @@ from app.dependencies import require_admin
 router = APIRouter(prefix="/admin/users", tags=["admin-users"])
 
 
-def build_user_response(user: dict) -> dict:
-    """Build a user response dict from a database document."""
-    return {
+def get_plan_details(plan_name: str) -> dict:
+    """Get plan details based on plan name."""
+    plans = {
+        "Pro": {
+            "name": "Pro",
+            "features": [
+                "Unlimited test generation",
+                "All premium question banks",
+                "Advanced analytics and performance tracking",
+                "Priority support",
+                "Exclusive learning resources",
+                "Custom test formats",
+                "Progress insights"
+            ],
+            "test_generation_limit": None,
+            "question_bank_access": "all",
+            "analytics_enabled": True,
+            "priority_support": True
+        },
+        "Free": {
+            "name": "Free",
+            "features": [
+                "Unlimited test generation",
+                "All premium question banks",
+                "Advanced analytics and performance tracking",
+                "Priority support",
+                "Exclusive learning resources",
+                "Custom test formats",
+                "Progress insights"
+            ],
+            "test_generation_limit": None,
+            "question_bank_access": "all",
+            "analytics_enabled": True,
+            "priority_support": True
+        }
+    }
+    return plans.get(plan_name, plans["Free"])
+
+
+def build_user_response(user: dict, include_otp: bool = False) -> dict:
+    """Build a user response dict from a database document with all fields except password."""
+    user_plan = user.get("plan", "Free")
+    response = {
         "id": user["id"],
         "full_name": user["full_name"],
         "email": user["email"],
         "role": user["role"],
-        "plan": user.get("plan", "Free"),
+        "user_type": user.get("user_type", "regular"),
+        "plan": user_plan,
+        "plan_details": get_plan_details(user_plan),
         "is_active": user["is_active"],
         "is_verified": user["is_verified"],
         "created_at": user["created_at"],
         "updated_at": user["updated_at"],
+        "exam_year": user.get("exam_year"),
+        "plan_expiry": user.get("plan_expiry"),
+        "course_name": user.get("course_name"),
     }
+    if include_otp:
+        response["otp_code"] = user.get("otp_code")
+        response["otp_expiry"] = user.get("otp_expiry")
+    return response
 
 
 @router.get("", response_model=APIResponse[List[UserListResponse]])
@@ -61,14 +110,14 @@ async def get_users(
 
     cursor = db.users.find(
         query,
-        {"password_hash": 0, "otp_code": 0, "otp_expiry": 0}
+        {"password_hash": 0}
     ).sort("created_at", -1).skip(skip).limit(limit)
 
     users = await cursor.to_list(length=limit)
     total = await db.users.count_documents(query)
 
     return {
-        "data": [build_user_response(u) for u in users],
+        "data": [build_user_response(u, include_otp=True) for u in users],
         "message": f"Retrieved {len(users)} users (total: {total})"
     }
 
@@ -196,7 +245,7 @@ async def delete_user(
     user_id: str,
     admin_user: dict = Depends(require_admin)
 ):
-    """Delete a user. Admin only."""
+    """Delete a user and all associated data. Admin only. Only temporary or inactive users can be deleted."""
     db = get_database()
 
     # Prevent admin from deleting themselves
@@ -213,14 +262,31 @@ async def delete_user(
             detail="User not found"
         )
 
+    # Only allow deletion of temporary or inactive users
+    is_temp = existing.get("user_type") == "temp"
+    is_inactive = not existing.get("is_active", True)
+
+    if not is_temp and not is_inactive:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only temporary or inactive users can be deleted"
+        )
+
+    # Delete user's generated tests
+    await db.generated_tests.delete_many({"user_id": user_id})
+
+    # Delete user's test attempts
+    await db.test_attempts.delete_many({"user_id": user_id})
+
+    # Delete user record
     await db.users.delete_one({"id": user_id})
 
-    # Also invalidate all tokens for this user
+    # Invalidate all tokens for this user
     await db.blacklisted_tokens.delete_many({"user_id": user_id})
 
     return {
         "data": None,
-        "message": "User deleted successfully"
+        "message": "User and all associated data deleted successfully"
     }
 
 

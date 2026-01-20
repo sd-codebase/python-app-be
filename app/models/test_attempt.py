@@ -9,6 +9,21 @@ class TestSource(str, Enum):
     PREDEFINED = "predefined"
 
 
+class RankRange(BaseModel):
+    lower: int
+    upper: int
+
+
+class RankPrediction(BaseModel):
+    percentile: float
+    predicted_rank: int
+    rank_range: RankRange
+    normalized_score: float
+    exam_max_score: int
+    exam_type: str
+    prediction_data_year: str
+
+
 # Request Models
 class SubmitAnswerItem(BaseModel):
     question_id: str
@@ -47,6 +62,7 @@ class SubmitTestResponse(BaseModel):
     time_taken_seconds: Optional[int] = None
     results: List[QuestionResult]
     submitted_at: datetime
+    rank_prediction: Optional[RankPrediction] = None
 
 
 class AttemptHistoryResponse(BaseModel):
@@ -64,6 +80,7 @@ class AttemptHistoryResponse(BaseModel):
     max_score: float
     percentage: float
     submitted_at: datetime
+    rank_prediction: Optional[RankPrediction] = None
 
 
 class AttemptDetailResponse(BaseModel):
@@ -84,3 +101,4 @@ class AttemptDetailResponse(BaseModel):
     time_taken_seconds: Optional[int] = None
     results: List[QuestionResult]
     submitted_at: datetime
+    rank_prediction: Optional[RankPrediction] = None

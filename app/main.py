@@ -23,6 +23,7 @@ from app.routes import (
     predefined_tests_router,
     test_attempts_router,
     public_router,
+    exam_configs_router,
 )
 
 
@@ -54,7 +55,10 @@ async def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost:3050",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -80,6 +84,8 @@ app.include_router(admin_predefined_tests_router, prefix="/api")
 app.include_router(predefined_tests_router, prefix="/api")
 # Unified Test Attempts (submit any test, view history)
 app.include_router(test_attempts_router, prefix="/api")
+# Exam Configurations (admin manages exam data for rank prediction)
+app.include_router(exam_configs_router, prefix="/api")
 
 
 @app.get("/")

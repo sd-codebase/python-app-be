@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from pydantic import BaseModel
 from enum import Enum
 
@@ -149,6 +149,7 @@ class SubmitAttemptResponse(BaseModel):
     percentage: float
     negative_marking_applied: bool
     results: List[AttemptQuestionResult]
+    rank_prediction: Optional[Dict[str, Any]] = None
 
 
 class UserAttemptHistoryResponse(BaseModel):
@@ -163,3 +164,4 @@ class UserAttemptHistoryResponse(BaseModel):
     percentage: float
     started_at: datetime
     submitted_at: datetime
+    rank_prediction: Optional[Dict[str, Any]] = None

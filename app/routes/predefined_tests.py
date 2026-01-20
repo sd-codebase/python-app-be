@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException, Depends, status
 
 from app.database import get_database
 from app.models.response import APIResponse
+from app.utils.rank_prediction import get_rank_prediction_from_test
 from app.models.predefined_test import (
     PredefinedTestStatus,
     PredefinedTestUserResponse,
@@ -480,6 +481,18 @@ async def submit_attempt(
         q["user_answer"] = user_answers_map.get(q["question_id"], q.get("user_answer"))
         updated_questions.append(q)
 
+    # Fetch the predefined test details for reference info
+    test = await db.predefined_tests.find_one({"id": attempt["test_id"]})
+
+    # Calculate rank prediction
+    test_type = attempt.get("test_type", "")
+    reference_id = test.get("reference_id") if test else None
+    rank_prediction = None
+    if reference_id:
+        rank_prediction = await get_rank_prediction_from_test(
+            db, score, max_score, test_type, reference_id
+        )
+
     now = datetime.utcnow()
     await db.predefined_test_attempts.update_one(
         {"id": attempt_id},
@@ -494,12 +507,10 @@ async def submit_attempt(
                 "unanswered": unanswered,
                 "is_submitted": True,
                 "submitted_at": now,
+                "rank_prediction": rank_prediction,
             }
         }
     )
-
-    # Fetch the predefined test details for reference info
-    test = await db.predefined_tests.find_one({"id": attempt["test_id"]})
 
     # Create unified attempt record
     unified_attempt_id = str(uuid4())
@@ -510,8 +521,8 @@ async def submit_attempt(
         "predefined_attempt_id": attempt_id,  # Link to original attempt
         "test_source": "predefined",  # Distinguish from user-generated tests
         "test_name": attempt["test_name"],
-        "test_type": attempt["test_type"],
-        "reference_id": test.get("reference_id") if test else None,
+        "test_type": test_type,
+        "reference_id": reference_id,
         "reference_name": attempt["reference_name"],
         "set_test_id": test.get("set_test_id") if test else None,
         "set_test_name": test.get("set_test_name") if test else None,
@@ -529,6 +540,7 @@ async def submit_attempt(
         "started_at": attempt["started_at"],
         "submitted_at": now,
         "questions": updated_questions,  # Store questions with user answers
+        "rank_prediction": rank_prediction,
     }
 
     await db.test_attempts.insert_one(unified_attempt_doc)
@@ -546,6 +558,7 @@ async def submit_attempt(
             "percentage": round(percentage, 2),
             "negative_marking_applied": negative_marks > 0,
             "results": results,
+            "rank_prediction": rank_prediction,
         },
         "message": "Test submitted successfully"
     }
@@ -592,6 +605,7 @@ async def get_attempt_history(
                 "percentage": a["percentage"],
                 "started_at": a["started_at"],
                 "submitted_at": a["submitted_at"],
+                "rank_prediction": a.get("rank_prediction"),
             }
             for a in attempts
         ],
@@ -642,6 +656,7 @@ async def review_attempt(
             "percentage": attempt["percentage"],
             "negative_marking_applied": attempt.get("negative_marks", 1.0) > 0,
             "results": results,
+            "rank_prediction": attempt.get("rank_prediction"),
         },
         "message": "Attempt review retrieved successfully"
     }

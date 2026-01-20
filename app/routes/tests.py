@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException, Depends, status, BackgroundTasks, 
 
 from app.database import get_database
 from app.utils.rate_limiter import limiter
+from app.utils.rank_prediction import get_rank_prediction_from_test
 from app.models.response import APIResponse
 from app.models.test import (
     TestType,
@@ -848,6 +849,11 @@ async def submit_test(
     max_score = total * marks_per_question
     percentage = (score / max_score) * 100 if max_score > 0 else 0
 
+    # Calculate rank prediction
+    rank_prediction = await get_rank_prediction_from_test(
+        db, score, max_score, test["test_type"], test["reference_id"]
+    )
+
     # Update test with user answers and score
     updated_questions = []
     for q in test["questions"]:
@@ -895,6 +901,7 @@ async def submit_test(
         "started_at": test["created_at"],  # Use test creation as start time
         "submitted_at": now,
         "questions": updated_questions,  # Store questions with user answers
+        "rank_prediction": rank_prediction,
     }
 
     await db.test_attempts.insert_one(attempt_doc)
@@ -911,6 +918,7 @@ async def submit_test(
             "percentage": round(percentage, 2),
             "negative_marking_applied": negative_marks > 0,
             "results": results,
+            "rank_prediction": rank_prediction,
         },
         "message": "Test submitted successfully"
     }

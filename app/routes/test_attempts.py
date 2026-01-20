@@ -14,6 +14,7 @@ from app.models.test_attempt import (
     AttemptDetailResponse,
 )
 from app.dependencies import get_current_active_user
+from app.utils.rank_prediction import get_rank_prediction_from_test
 
 router = APIRouter(prefix="/tests", tags=["test-attempts"])
 
@@ -137,6 +138,13 @@ async def submit_test(
     marks_per_question = test["questions"][0].get("marks_per_question", test.get("marks_per_question", 4.0)) if test["questions"] else 4.0
     negative_marks = test["questions"][0].get("negative_marks", test.get("negative_marks", 0.0)) if test["questions"] else 0.0
 
+    # Calculate rank prediction
+    test_type = test.get("test_type", "")
+    reference_id = test.get("reference_id", "")
+    rank_prediction = await get_rank_prediction_from_test(
+        db, score, max_score, test_type, reference_id
+    )
+
     # Create attempt record
     attempt_id = str(uuid4())
     now = datetime.utcnow()
@@ -147,8 +155,8 @@ async def submit_test(
         "test_source": test_source.value,
         "test_id": test_id,
         "test_name": test.get("name", test.get("set_test_name", "")),
-        "test_type": test.get("test_type", ""),
-        "reference_id": test.get("reference_id", ""),
+        "test_type": test_type,
+        "reference_id": reference_id,
         "reference_name": test.get("reference_name", ""),
         "set_test_id": test.get("set_test_id", ""),
         "set_test_name": test.get("set_test_name", ""),
@@ -166,6 +174,7 @@ async def submit_test(
         "time_taken_seconds": request.time_taken_seconds,
         "started_at": now,  # Using submission time as started time
         "submitted_at": now,
+        "rank_prediction": rank_prediction,
     }
 
     await db.test_attempts.insert_one(attempt_doc)
@@ -194,6 +203,7 @@ async def submit_test(
             "time_taken_seconds": request.time_taken_seconds,
             "results": [QuestionResult(**r).model_dump() for r in results],
             "submitted_at": now,
+            "rank_prediction": rank_prediction,
         },
         "message": "Test submitted successfully"
     }
@@ -244,6 +254,7 @@ async def get_attempt_history(
                 "max_score": a["max_score"],
                 "percentage": a["percentage"],
                 "submitted_at": a["submitted_at"],
+                "rank_prediction": a.get("rank_prediction"),
             }
             for a in attempts
         ],
@@ -299,6 +310,7 @@ async def get_attempt_detail(
             "time_taken_seconds": attempt.get("time_taken_seconds"),
             "results": [QuestionResult(**q).model_dump() for q in attempt["questions"]],
             "submitted_at": attempt["submitted_at"],
+            "rank_prediction": attempt.get("rank_prediction"),
         },
         "message": "Attempt details retrieved successfully"
     }
@@ -336,6 +348,7 @@ async def get_attempts_for_test(
                 "max_score": a["max_score"],
                 "percentage": a["percentage"],
                 "submitted_at": a["submitted_at"],
+                "rank_prediction": a.get("rank_prediction"),
             }
             for a in attempts
         ],

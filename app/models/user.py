@@ -142,7 +142,13 @@ class UserListResponse(BaseModel):
     role: str
     user_type: str = "regular"
     plan: str
+    plan_details: Optional[PlanDetails] = None
     is_active: bool
     is_verified: bool
     created_at: datetime
     updated_at: datetime
+    exam_year: Optional[int] = None
+    plan_expiry: Optional[datetime] = None
+    course_name: Optional[str] = None
+    otp_code: Optional[str] = None
+    otp_expiry: Optional[datetime] = None
