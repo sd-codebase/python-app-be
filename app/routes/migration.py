@@ -294,6 +294,8 @@ async def run_migration():
             "course_id": course_id,
             "is_active": question.get("is_active", True),
             "verified_in_app": question.get("verified_in_app", False),
+            "important": question.get("important", False),
+            "outside_ncert": question.get("outside_ncert", False),
             "created_at": parse_datetime(question.get("created_at")),
             "updated_at": parse_datetime(question.get("updated_at")),
         }

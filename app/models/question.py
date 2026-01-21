@@ -23,6 +23,8 @@ class QuestionBase(BaseModel):
     course_id: Optional[str] = None
     is_active: Optional[bool] = True
     verified_in_app: bool = False
+    important: Optional[bool] = False
+    outside_ncert: Optional[bool] = False
 
 
 class QuestionCreate(QuestionBase):
@@ -47,6 +49,8 @@ class QuestionUpdate(BaseModel):
     course_id: Optional[str] = None
     is_active: Optional[bool] = None
     verified_in_app: Optional[bool] = None
+    important: Optional[bool] = None
+    outside_ncert: Optional[bool] = None
 
 
 class Question(QuestionBase):
