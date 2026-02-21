@@ -118,6 +118,7 @@ class UserResponse(BaseModel):
     exam_year: Optional[int] = None
     plan_expiry: Optional[datetime] = None
     course_name: Optional[str] = None
+    ads_disabled: bool = False
 
 
 # Admin User Management Models
@@ -150,5 +151,6 @@ class UserListResponse(BaseModel):
     exam_year: Optional[int] = None
     plan_expiry: Optional[datetime] = None
     course_name: Optional[str] = None
+    ads_disabled: bool = False
     otp_code: Optional[str] = None
     otp_expiry: Optional[datetime] = None

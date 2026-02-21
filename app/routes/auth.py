@@ -415,6 +415,7 @@ async def get_me(current_user: dict = Depends(get_current_active_user)):
     # Get examYear from app_metadata collection
     app_metadata = await db.app_metadata.find_one({})
     exam_year = app_metadata.get("examYear") if app_metadata else None
+    ads_disabled = app_metadata.get("ads_disabled", False) if app_metadata else False
 
     # Get course name from courses collection
     course = await db.courses.find_one({})
@@ -440,6 +441,7 @@ async def get_me(current_user: dict = Depends(get_current_active_user)):
             "exam_year": exam_year,
             "plan_expiry": plan_expiry,
             "course_name": course_name,
+            "ads_disabled": ads_disabled,
         },
         "message": "User profile retrieved successfully"
     }
