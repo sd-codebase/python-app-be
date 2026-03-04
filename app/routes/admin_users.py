@@ -18,45 +18,6 @@ from app.dependencies import require_admin
 router = APIRouter(prefix="/admin/users", tags=["admin-users"])
 
 
-def get_plan_details(plan_name: str) -> dict:
-    """Get plan details based on plan name."""
-    plans = {
-        "Pro": {
-            "name": "Pro",
-            "features": [
-                "Unlimited test generation",
-                "All premium question banks",
-                "Advanced analytics and performance tracking",
-                "Priority support",
-                "Exclusive learning resources",
-                "Custom test formats",
-                "Progress insights"
-            ],
-            "test_generation_limit": None,
-            "question_bank_access": "all",
-            "analytics_enabled": True,
-            "priority_support": True
-        },
-        "Free": {
-            "name": "Free",
-            "features": [
-                "Unlimited test generation",
-                "All premium question banks",
-                "Advanced analytics and performance tracking",
-                "Priority support",
-                "Exclusive learning resources",
-                "Custom test formats",
-                "Progress insights"
-            ],
-            "test_generation_limit": None,
-            "question_bank_access": "all",
-            "analytics_enabled": True,
-            "priority_support": True
-        }
-    }
-    return plans.get(plan_name, plans["Free"])
-
-
 def build_user_response(user: dict, include_otp: bool = False) -> dict:
     """Build a user response dict from a database document with all fields except password."""
     user_plan = user.get("plan", "Free")
@@ -67,7 +28,6 @@ def build_user_response(user: dict, include_otp: bool = False) -> dict:
         "role": user["role"],
         "user_type": user.get("user_type", "regular"),
         "plan": user_plan,
-        "plan_details": get_plan_details(user_plan),
         "is_active": user["is_active"],
         "is_verified": user["is_verified"],
         "created_at": user["created_at"],
@@ -75,6 +35,8 @@ def build_user_response(user: dict, include_otp: bool = False) -> dict:
         "exam_year": user.get("exam_year"),
         "plan_expiry": user.get("plan_expiry"),
         "course_name": user.get("course_name"),
+        "whatsapp_number": user.get("whatsapp_number"),
+        "country_code": user.get("country_code"),
     }
     if include_otp:
         response["otp_code"] = user.get("otp_code")

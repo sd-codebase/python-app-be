@@ -7,143 +7,97 @@ from app.database import get_database
 from app.utils.rate_limiter import limiter
 from app.models.response import APIResponse
 from app.models.user import (
-    SignupRequest,
-    SignupResponse,
-    VerifyOTPRequest,
-    VerifyOTPResponse,
-    SetPasswordRequest,
-    LoginRequest,
+    SendWhatsAppOTPRequest,
+    VerifyWhatsAppOTPRequest,
+    VerifyWhatsAppOTPResponse,
+    CompleteRegistrationRequest,
+    UpdateWhatsAppRequest,
+    VerifyUpdateWhatsAppRequest,
+    UpdateNameRequest,
     TokenResponse,
-    ForgotPasswordRequest,
-    ResetPasswordRequest,
-    ChangePasswordRequest,
     UserResponse,
     UserRole,
 )
-from app.utils.security import (
-    hash_password,
-    verify_password,
-    create_access_token,
-)
+from app.utils.security import create_access_token
 from app.utils.otp import generate_otp, get_otp_expiry, is_otp_valid
-from app.utils.email import send_otp_email, send_password_reset_email
+from app.utils.whatsapp import send_whatsapp_otp
 from app.dependencies import get_current_active_user, security
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-def get_plan_details(plan_name: str) -> dict:
-    """Get plan details based on plan name."""
-    plans = {
-        "Pro": {
-            "name": "Pro",
-            "features": [
-                "Unlimited test generation",
-                "All premium question banks",
-                "Advanced analytics and performance tracking",
-                "Priority support",
-                "Exclusive learning resources",
-                "Custom test formats",
-                "Progress insights"
-            ],
-            "test_generation_limit": None,  # Unlimited
-            "question_bank_access": "all",
-            "analytics_enabled": True,
-            "priority_support": True
-        },
-        "Free": {
-            "name": "Free",
-            "features": [
-                "Unlimited test generation",
-                "All premium question banks",
-                "Advanced analytics and performance tracking",
-                "Priority support",
-                "Exclusive learning resources",
-                "Custom test formats",
-                "Progress insights"
-            ],
-            "test_generation_limit": None,  # Unlimited
-            "question_bank_access": "all",
-            "analytics_enabled": True,
-            "priority_support": True
-        }
-    }
-    return plans.get(plan_name, plans["Free"])
-
-
-@router.post("/signup", response_model=APIResponse[SignupResponse], status_code=201)
+@router.post("/send-whatsapp-otp", response_model=APIResponse)
 @limiter.limit("3/minute")
-async def signup(request: Request, data: SignupRequest):
-    """Register a new user and send OTP to email."""
+async def send_otp(request: Request, data: SendWhatsAppOTPRequest):
+    """Send OTP to WhatsApp number. Creates unverified user if not exists."""
     db = get_database()
     now = datetime.utcnow()
+    phone = data.phone
+    full_phone = f"91{phone}"
 
-    # Check if email already exists
-    existing_user = await db.users.find_one({"email": data.email})
-    if existing_user:
-        if existing_user.get("is_verified"):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Email already registered"
-            )
-        else:
-            # User exists but not verified, update OTP and resend
-            otp = generate_otp()
-            await db.users.update_one(
-                {"email": data.email},
-                {
-                    "$set": {
-                        "full_name": data.full_name,
-                        "otp_code": otp,
-                        "otp_expiry": get_otp_expiry(),
-                        "updated_at": now,
-                    }
-                }
-            )
-            send_otp_email(data.email, otp, data.full_name)
-            return {
-                "data": {"user_id": existing_user["id"], "email": data.email},
-                "message": "OTP sent to email"
-            }
+    # Find user by whatsapp_number
+    existing_user = await db.users.find_one({"whatsapp_number": phone})
 
-    # Create new user
-    user_id = str(uuid4())
     otp = generate_otp()
 
-    user_doc = {
-        "id": user_id,
-        "full_name": data.full_name,
-        "email": data.email,
-        "password_hash": None,
-        "role": UserRole.USER,
-        "plan": "Free",  # Default plan for all new users
-        "is_active": False,
-        "is_verified": False,
-        "otp_code": otp,
-        "otp_expiry": get_otp_expiry(),
-        "created_at": now,
-        "updated_at": now,
-    }
+    if existing_user:
+        # Update OTP on existing user
+        await db.users.update_one(
+            {"whatsapp_number": phone},
+            {
+                "$set": {
+                    "otp_code": otp,
+                    "otp_expiry": get_otp_expiry(),
+                    "updated_at": now,
+                }
+            }
+        )
+    else:
+        # Create new unverified user
+        user_id = str(uuid4())
+        user_doc = {
+            "id": user_id,
+            "full_name": "User",
+            "email": f"wa_{phone}@whatsapp.local",
+            "password_hash": None,
+            "role": UserRole.USER,
+            "user_type": "regular",
+            "plan": "Free",
+            "is_active": False,
+            "is_verified": False,
+            "whatsapp_number": phone,
+            "country_code": "91",
+            "otp_code": otp,
+            "otp_expiry": get_otp_expiry(),
+            "created_at": now,
+            "updated_at": now,
+        }
+        await db.users.insert_one(user_doc)
 
-    await db.users.insert_one(user_doc)
-    send_otp_email(data.email, otp, data.full_name)
+    # Send OTP via WhatsApp
+    sent = await send_whatsapp_otp(full_phone, otp)
+    if not sent:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to send OTP. Please try again."
+        )
 
     return {
-        "data": {"user_id": user_id, "email": data.email},
-        "message": "OTP sent to email"
+        "data": None,
+        "message": "OTP sent to WhatsApp"
     }
 
 
-@router.post("/verify-otp", response_model=APIResponse[VerifyOTPResponse])
-async def verify_otp(request: VerifyOTPRequest):
-    """Verify the OTP code."""
+@router.post("/verify-whatsapp-otp", response_model=APIResponse[VerifyWhatsAppOTPResponse])
+async def verify_whatsapp_otp(request: VerifyWhatsAppOTPRequest):
+    """Verify WhatsApp OTP. Returns token for existing users, is_new_user flag for new users."""
     db = get_database()
 
-    user = await db.users.find_one({"email": request.email})
+    user = await db.users.find_one({"whatsapp_number": request.phone})
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
+            detail="User not found. Please request OTP first."
         )
 
     if not user.get("otp_code") or not user.get("otp_expiry"):
@@ -164,12 +118,11 @@ async def verify_otp(request: VerifyOTPRequest):
             detail="Invalid OTP"
         )
 
-    # Mark user as active (OTP verified)
+    # Clear OTP
     await db.users.update_one(
-        {"email": request.email},
+        {"whatsapp_number": request.phone},
         {
             "$set": {
-                "is_active": True,
                 "otp_code": None,
                 "otp_expiry": None,
                 "updated_at": datetime.utcnow(),
@@ -177,22 +130,55 @@ async def verify_otp(request: VerifyOTPRequest):
         }
     )
 
-    return {
-        "data": {"verified": True},
-        "message": "OTP verified successfully"
-    }
+    # Check if this is a verified (existing) user
+    if user.get("is_verified"):
+        # Existing user — return token
+        if not user.get("is_active"):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Account is deactivated"
+            )
+
+        access_token = create_access_token(user["id"], user["role"])
+        return {
+            "data": {
+                "is_new_user": False,
+                "access_token": access_token,
+                "token_type": "bearer",
+                "role": user["role"],
+            },
+            "message": "Login successful"
+        }
+    else:
+        # New user — mark active but not verified yet (needs name)
+        await db.users.update_one(
+            {"whatsapp_number": request.phone},
+            {"$set": {"is_active": True, "updated_at": datetime.utcnow()}}
+        )
+        return {
+            "data": {
+                "is_new_user": True,
+            },
+            "message": "OTP verified. Please complete registration."
+        }
 
 
-@router.post("/set-password", response_model=APIResponse[UserResponse])
-async def set_password(request: SetPasswordRequest):
-    """Set password after OTP verification."""
+@router.post("/complete-registration", response_model=APIResponse[TokenResponse])
+async def complete_registration(request: CompleteRegistrationRequest):
+    """Complete registration for new users by setting their name."""
     db = get_database()
 
-    user = await db.users.find_one({"email": request.email})
+    user = await db.users.find_one({"whatsapp_number": request.phone})
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found"
+        )
+
+    if user.get("is_verified"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User already registered"
         )
 
     if not user.get("is_active"):
@@ -201,76 +187,17 @@ async def set_password(request: SetPasswordRequest):
             detail="Please verify OTP first"
         )
 
-    if user.get("is_verified"):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Password already set. Use change-password or forgot-password"
-        )
-
-    # Set password and mark as verified
-    password_hash = hash_password(request.password)
+    # Set name and mark verified
     await db.users.update_one(
-        {"email": request.email},
+        {"whatsapp_number": request.phone},
         {
             "$set": {
-                "password_hash": password_hash,
+                "full_name": request.full_name,
                 "is_verified": True,
                 "updated_at": datetime.utcnow(),
             }
         }
     )
-
-    updated_user = await db.users.find_one({"email": request.email})
-
-    user_plan = updated_user.get("plan", "Free")
-    plan_details = get_plan_details(user_plan)
-
-    return {
-        "data": {
-            "id": updated_user["id"],
-            "full_name": updated_user["full_name"],
-            "email": updated_user["email"],
-            "role": updated_user["role"],
-            "plan": user_plan,
-            "plan_details": plan_details,
-            "is_active": updated_user["is_active"],
-            "is_verified": updated_user["is_verified"],
-            "created_at": updated_user["created_at"],
-            "updated_at": updated_user["updated_at"],
-        },
-        "message": "Password set successfully"
-    }
-
-
-@router.post("/login", response_model=APIResponse[TokenResponse])
-async def login(request: LoginRequest):
-    """Login with email and password."""
-    db = get_database()
-
-    user = await db.users.find_one({"email": request.email})
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email or password"
-        )
-
-    if not user.get("is_verified") or not user.get("password_hash"):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Account not fully set up. Please complete registration"
-        )
-
-    if not verify_password(request.password, user["password_hash"]):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email or password"
-        )
-
-    if not user.get("is_active"):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Account is deactivated"
-        )
 
     access_token = create_access_token(user["id"], user["role"])
 
@@ -280,35 +207,35 @@ async def login(request: LoginRequest):
             "token_type": "bearer",
             "role": user["role"],
         },
-        "message": "Login successful"
+        "message": "Registration complete"
     }
 
 
-@router.post("/forgot-password", response_model=APIResponse)
-@limiter.limit("3/minute")
-async def forgot_password(request: Request, data: ForgotPasswordRequest):
-    """Request password reset OTP."""
+@router.post("/update-whatsapp", response_model=APIResponse)
+async def update_whatsapp(
+    data: UpdateWhatsAppRequest,
+    current_user: dict = Depends(get_current_active_user)
+):
+    """Send OTP to a new WhatsApp number for updating."""
     db = get_database()
+    phone = data.phone
 
-    user = await db.users.find_one({"email": data.email})
-    if not user:
-        # Don't reveal if email exists or not for security
-        return {
-            "data": None,
-            "message": "If the email exists, a reset code has been sent"
-        }
-
-    if not user.get("is_verified"):
+    # Check if number already taken by another user
+    existing = await db.users.find_one({"whatsapp_number": phone})
+    if existing and existing["id"] != current_user["id"]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Account not fully set up. Please complete registration first"
+            detail="This WhatsApp number is already associated with another account"
         )
 
     otp = generate_otp()
+    full_phone = f"91{phone}"
+
     await db.users.update_one(
-        {"email": data.email},
+        {"id": current_user["id"]},
         {
             "$set": {
+                "pending_whatsapp_number": phone,
                 "otp_code": otp,
                 "otp_expiry": get_otp_expiry(),
                 "updated_at": datetime.utcnow(),
@@ -316,30 +243,45 @@ async def forgot_password(request: Request, data: ForgotPasswordRequest):
         }
     )
 
-    send_password_reset_email(data.email, otp, user["full_name"])
+    sent = await send_whatsapp_otp(full_phone, otp)
+    if not sent:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to send OTP. Please try again."
+        )
 
     return {
         "data": None,
-        "message": "If the email exists, a reset code has been sent"
+        "message": "OTP sent to new WhatsApp number"
     }
 
 
-@router.post("/reset-password", response_model=APIResponse)
-async def reset_password(request: ResetPasswordRequest):
-    """Reset password using OTP."""
+@router.post("/verify-update-whatsapp", response_model=APIResponse)
+async def verify_update_whatsapp(
+    data: VerifyUpdateWhatsAppRequest,
+    current_user: dict = Depends(get_current_active_user)
+):
+    """Verify OTP and update WhatsApp number."""
     db = get_database()
 
-    user = await db.users.find_one({"email": request.email})
-    if not user:
+    user = await db.users.find_one({"id": current_user["id"]})
+
+    if not user.get("pending_whatsapp_number"):
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No WhatsApp number update requested"
+        )
+
+    if user["pending_whatsapp_number"] != data.phone:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Phone number does not match pending update"
         )
 
     if not user.get("otp_code") or not user.get("otp_expiry"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No password reset requested"
+            detail="No OTP requested"
         )
 
     if not is_otp_valid(user["otp_expiry"]):
@@ -348,18 +290,19 @@ async def reset_password(request: ResetPasswordRequest):
             detail="OTP has expired"
         )
 
-    if user["otp_code"] != request.otp:
+    if user["otp_code"] != data.otp:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid OTP"
         )
 
-    password_hash = hash_password(request.new_password)
     await db.users.update_one(
-        {"email": request.email},
+        {"id": current_user["id"]},
         {
             "$set": {
-                "password_hash": password_hash,
+                "whatsapp_number": data.phone,
+                "country_code": "91",
+                "pending_whatsapp_number": None,
                 "otp_code": None,
                 "otp_expiry": None,
                 "updated_at": datetime.utcnow(),
@@ -369,30 +312,23 @@ async def reset_password(request: ResetPasswordRequest):
 
     return {
         "data": None,
-        "message": "Password reset successfully"
+        "message": "WhatsApp number updated successfully"
     }
 
 
-@router.post("/change-password", response_model=APIResponse)
-async def change_password(
-    request: ChangePasswordRequest,
+@router.post("/update-name", response_model=APIResponse)
+async def update_name(
+    data: UpdateNameRequest,
     current_user: dict = Depends(get_current_active_user)
 ):
-    """Change password for authenticated user."""
+    """Update user's full name."""
     db = get_database()
 
-    if not verify_password(request.current_password, current_user["password_hash"]):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Current password is incorrect"
-        )
-
-    password_hash = hash_password(request.new_password)
     await db.users.update_one(
         {"id": current_user["id"]},
         {
             "$set": {
-                "password_hash": password_hash,
+                "full_name": data.full_name,
                 "updated_at": datetime.utcnow(),
             }
         }
@@ -400,7 +336,7 @@ async def change_password(
 
     return {
         "data": None,
-        "message": "Password changed successfully"
+        "message": "Name updated successfully"
     }
 
 
@@ -408,9 +344,6 @@ async def change_password(
 async def get_me(current_user: dict = Depends(get_current_active_user)):
     """Get current user profile."""
     db = get_database()
-
-    user_plan = current_user.get("plan", "Free")
-    plan_details = get_plan_details(user_plan)
 
     # Get examYear from app_metadata collection
     app_metadata = await db.app_metadata.find_one({})
@@ -432,8 +365,7 @@ async def get_me(current_user: dict = Depends(get_current_active_user)):
             "email": current_user["email"],
             "role": current_user["role"],
             "user_type": current_user.get("user_type", "regular"),
-            "plan": user_plan,
-            "plan_details": plan_details,
+            "plan": current_user.get("plan", "Free"),
             "is_active": current_user["is_active"],
             "is_verified": current_user["is_verified"],
             "created_at": current_user["created_at"],
@@ -442,6 +374,8 @@ async def get_me(current_user: dict = Depends(get_current_active_user)):
             "plan_expiry": plan_expiry,
             "course_name": course_name,
             "ads_disabled": ads_disabled,
+            "whatsapp_number": current_user.get("whatsapp_number"),
+            "country_code": current_user.get("country_code"),
         },
         "message": "User profile retrieved successfully"
     }
@@ -486,6 +420,8 @@ async def anonymous_access(request: Request):
         "plan": "Free",
         "is_active": True,
         "is_verified": True,
+        "whatsapp_number": None,
+        "country_code": None,
         "otp_code": None,
         "otp_expiry": None,
         "created_at": now,

@@ -42,40 +42,32 @@ class UserInDB(User):
     otp_expiry: Optional[datetime] = None
 
 
-# Auth Request Models
-class SignupRequest(BaseModel):
+# WhatsApp Auth Request Models
+class SendWhatsAppOTPRequest(BaseModel):
+    phone: str = Field(..., pattern=r"^[6-9]\d{9}$")
+
+
+class VerifyWhatsAppOTPRequest(BaseModel):
+    phone: str = Field(..., pattern=r"^[6-9]\d{9}$")
+    otp: str = Field(..., min_length=6, max_length=6)
+
+
+class CompleteRegistrationRequest(BaseModel):
+    phone: str = Field(..., pattern=r"^[6-9]\d{9}$")
     full_name: str = Field(..., min_length=2, max_length=100)
-    email: EmailStr
 
 
-class VerifyOTPRequest(BaseModel):
-    email: EmailStr
+class UpdateWhatsAppRequest(BaseModel):
+    phone: str = Field(..., pattern=r"^[6-9]\d{9}$")
+
+
+class VerifyUpdateWhatsAppRequest(BaseModel):
+    phone: str = Field(..., pattern=r"^[6-9]\d{9}$")
     otp: str = Field(..., min_length=6, max_length=6)
 
 
-class SetPasswordRequest(BaseModel):
-    email: EmailStr
-    password: str = Field(..., min_length=8)
-
-
-class LoginRequest(BaseModel):
-    email: EmailStr
-    password: str
-
-
-class ForgotPasswordRequest(BaseModel):
-    email: EmailStr
-
-
-class ResetPasswordRequest(BaseModel):
-    email: EmailStr
-    otp: str = Field(..., min_length=6, max_length=6)
-    new_password: str = Field(..., min_length=8)
-
-
-class ChangePasswordRequest(BaseModel):
-    current_password: str
-    new_password: str = Field(..., min_length=8)
+class UpdateNameRequest(BaseModel):
+    full_name: str = Field(..., min_length=2, max_length=100)
 
 
 # Auth Response Models
@@ -85,22 +77,11 @@ class TokenResponse(BaseModel):
     role: str
 
 
-class SignupResponse(BaseModel):
-    user_id: str
-    email: str
-
-
-class VerifyOTPResponse(BaseModel):
-    verified: bool
-
-
-class PlanDetails(BaseModel):
-    name: str
-    features: List[str]
-    test_generation_limit: Optional[int] = None  # None means unlimited
-    question_bank_access: str  # "all" or "basic"
-    analytics_enabled: bool
-    priority_support: bool
+class VerifyWhatsAppOTPResponse(BaseModel):
+    is_new_user: bool
+    access_token: Optional[str] = None
+    token_type: Optional[str] = None
+    role: Optional[str] = None
 
 
 class UserResponse(BaseModel):
@@ -110,7 +91,6 @@ class UserResponse(BaseModel):
     role: str
     user_type: str = "regular"
     plan: str
-    plan_details: PlanDetails
     is_active: bool
     is_verified: bool
     created_at: datetime
@@ -119,6 +99,8 @@ class UserResponse(BaseModel):
     plan_expiry: Optional[datetime] = None
     course_name: Optional[str] = None
     ads_disabled: bool = False
+    whatsapp_number: Optional[str] = None
+    country_code: Optional[str] = None
 
 
 # Admin User Management Models
@@ -143,7 +125,6 @@ class UserListResponse(BaseModel):
     role: str
     user_type: str = "regular"
     plan: str
-    plan_details: Optional[PlanDetails] = None
     is_active: bool
     is_verified: bool
     created_at: datetime
@@ -152,5 +133,7 @@ class UserListResponse(BaseModel):
     plan_expiry: Optional[datetime] = None
     course_name: Optional[str] = None
     ads_disabled: bool = False
+    whatsapp_number: Optional[str] = None
+    country_code: Optional[str] = None
     otp_code: Optional[str] = None
     otp_expiry: Optional[datetime] = None

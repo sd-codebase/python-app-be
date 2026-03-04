@@ -28,6 +28,15 @@ class Settings(BaseSettings):
     smtp_from_email: str = ""
     smtp_from_name: str = "MockTest"
 
+    # WhatsApp API Settings (loaded from .env)
+    whatsapp_api_token: str = ""
+    whatsapp_phone_number_id: str = ""
+    notification_mode: str = "development"
+    whatsapp_app_name: str = ""
+    whatsapp_contact_number: str = ""
+    whatsapp_template_name: str = ""
+    whatsapp_template_language: str = ""
+
     # Test Settings
     test_num_questions: int = 30
     test_negative_marking: bool = True
