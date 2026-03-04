@@ -349,6 +349,7 @@ async def get_me(current_user: dict = Depends(get_current_active_user)):
     app_metadata = await db.app_metadata.find_one({})
     exam_year = app_metadata.get("examYear") if app_metadata else None
     ads_disabled = app_metadata.get("ads_disabled", False) if app_metadata else False
+    ads_cooling_period_minutes = app_metadata.get("ads_cooling_period_minutes", 10) if app_metadata else 10
 
     # Get course name from courses collection
     course = await db.courses.find_one({})
@@ -374,6 +375,7 @@ async def get_me(current_user: dict = Depends(get_current_active_user)):
             "plan_expiry": plan_expiry,
             "course_name": course_name,
             "ads_disabled": ads_disabled,
+            "ads_cooling_period_minutes": ads_cooling_period_minutes,
             "whatsapp_number": current_user.get("whatsapp_number"),
             "country_code": current_user.get("country_code"),
         },

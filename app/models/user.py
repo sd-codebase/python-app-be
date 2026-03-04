@@ -99,6 +99,7 @@ class UserResponse(BaseModel):
     plan_expiry: Optional[datetime] = None
     course_name: Optional[str] = None
     ads_disabled: bool = False
+    ads_cooling_period_minutes: int = 10
     whatsapp_number: Optional[str] = None
     country_code: Optional[str] = None
 
@@ -133,6 +134,7 @@ class UserListResponse(BaseModel):
     plan_expiry: Optional[datetime] = None
     course_name: Optional[str] = None
     ads_disabled: bool = False
+    ads_cooling_period_minutes: int = 10
     whatsapp_number: Optional[str] = None
     country_code: Optional[str] = None
     otp_code: Optional[str] = None
