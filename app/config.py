@@ -37,6 +37,10 @@ class Settings(BaseSettings):
     whatsapp_template_name: str = ""
     whatsapp_template_language: str = ""
 
+    # Demo Login Account
+    demo_whatsapp_number: str = ""
+    demo_otp: str = ""
+
     # Test Settings
     test_num_questions: int = 30
     test_negative_marking: bool = True

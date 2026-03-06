@@ -22,6 +22,7 @@ from app.utils.security import create_access_token
 from app.utils.otp import generate_otp, get_otp_expiry, is_otp_valid
 from app.utils.whatsapp import send_whatsapp_otp
 from app.dependencies import get_current_active_user, security
+from app.config import settings
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -74,13 +75,15 @@ async def send_otp(request: Request, data: SendWhatsAppOTPRequest):
         }
         await db.users.insert_one(user_doc)
 
-    # Send OTP via WhatsApp
-    sent = await send_whatsapp_otp(full_phone, otp)
-    if not sent:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to send OTP. Please try again."
-        )
+    # Skip sending OTP for demo account
+    is_demo = settings.demo_whatsapp_number and phone == settings.demo_whatsapp_number
+    if not is_demo:
+        sent = await send_whatsapp_otp(full_phone, otp)
+        if not sent:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to send OTP. Please try again."
+            )
 
     return {
         "data": None,
@@ -100,23 +103,36 @@ async def verify_whatsapp_otp(request: VerifyWhatsAppOTPRequest):
             detail="User not found. Please request OTP first."
         )
 
-    if not user.get("otp_code") or not user.get("otp_expiry"):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No OTP requested"
-        )
+    is_demo = (
+        settings.demo_whatsapp_number
+        and request.phone == settings.demo_whatsapp_number
+    )
 
-    if not is_otp_valid(user["otp_expiry"]):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="OTP has expired"
-        )
+    if is_demo:
+        # Demo account: verify against hardcoded OTP only
+        if request.otp != settings.demo_otp:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid OTP"
+            )
+    else:
+        if not user.get("otp_code") or not user.get("otp_expiry"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No OTP requested"
+            )
 
-    if user["otp_code"] != request.otp:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid OTP"
-        )
+        if not is_otp_valid(user["otp_expiry"]):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="OTP has expired"
+            )
+
+        if user["otp_code"] != request.otp:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid OTP"
+            )
 
     # Clear OTP
     await db.users.update_one(
