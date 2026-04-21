@@ -418,7 +418,7 @@ async def generate_test(
     if unattempted_count >= 3:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="You have 3 or more unattempted tests. Please complete or delete existing tests before generating new ones."
+            detail="You have 3 or more unattempted/unfinished tests. Please complete or delete existing tests before generating new ones."
         )
 
     # Fetch the set test format
