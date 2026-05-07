@@ -13,6 +13,7 @@ from app.routes.predefined_tests import router as predefined_tests_router
 from app.routes.test_attempts import router as test_attempts_router
 from app.routes.public import router as public_router
 from app.routes.exam_configs import router as exam_configs_router
+from app.routes.global_notifications import router as global_notifications_router
 
 __all__ = [
     "courses_router",
@@ -30,4 +31,5 @@ __all__ = [
     "test_attempts_router",
     "public_router",
     "exam_configs_router",
+    "global_notifications_router",
 ]

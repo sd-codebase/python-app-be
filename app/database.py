@@ -59,6 +59,10 @@ async def connect_to_mongo():
     await db.test_attempts.create_index("test_source")
     await db.test_attempts.create_index([("user_id", 1), ("submitted_at", -1)])
 
+    # Global notifications
+    await db.global_notifications.create_index("id", unique=True)
+    await db.global_notifications.create_index("api_version")
+
 
 async def close_mongo_connection():
     global client

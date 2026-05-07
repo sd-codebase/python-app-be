@@ -24,6 +24,7 @@ from app.routes import (
     test_attempts_router,
     public_router,
     exam_configs_router,
+    global_notifications_router,
 )
 
 
@@ -86,6 +87,7 @@ app.include_router(predefined_tests_router, prefix="/api")
 app.include_router(test_attempts_router, prefix="/api")
 # Exam Configurations (admin manages exam data for rank prediction)
 app.include_router(exam_configs_router, prefix="/api")
+app.include_router(global_notifications_router, prefix="/api")
 
 
 @app.get("/")
