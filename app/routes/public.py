@@ -1,11 +1,17 @@
-from fastapi import APIRouter, HTTPException, Request
+import re
+
+from fastapi import APIRouter, Request
+from fastapi.responses import JSONResponse
 
 from app.database import get_database
-from app.models.question import PublicQuestion
+from app.models.question import PublicQuestion, PublicSolution
 from app.models.response import APIResponse
 from app.utils.rate_limiter import limiter
 
 router = APIRouter(prefix="/public/questions", tags=["public"])
+solutions_router = APIRouter(prefix="/public/solutions", tags=["public"])
+
+_VALID_ID = re.compile(r'^[a-zA-Z0-9_-]+$')
 
 
 @router.get("/{question_id}", response_model=APIResponse[PublicQuestion])
@@ -41,3 +47,22 @@ async def get_question_public(request: Request, question_id: str):
     }
 
     return {"data": public_question, "message": "Question retrieved successfully"}
+
+
+@solutions_router.get("/{solution_id}", response_model=APIResponse[PublicSolution])
+@limiter.limit("500/minute")
+async def get_solution_public(request: Request, solution_id: str):
+    if not _VALID_ID.match(solution_id):
+        return JSONResponse(status_code=400, content={"error": "Invalid solution ID"})
+
+    db = get_database()
+    question = await db.questions.find_one({"id": solution_id})
+    if not question:
+        return JSONResponse(status_code=404, content={"error": "Solution not found"})
+
+    solutions = question.get("solutions") or []
+    solution_text = solutions[0] if solutions else None
+    if not solution_text:
+        return JSONResponse(status_code=404, content={"error": "Solution not found"})
+
+    return {"data": {"solution": solution_text}, "message": "Success"}
