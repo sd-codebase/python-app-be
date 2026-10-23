@@ -70,6 +70,12 @@ class UpdateNameRequest(BaseModel):
     full_name: str = Field(..., min_length=2, max_length=100)
 
 
+# Admin panel login (email + password); students log in with WhatsApp OTP
+class AdminLoginRequest(BaseModel):
+    email: EmailStr
+    password: str = Field(..., min_length=1, max_length=200)
+
+
 # Auth Response Models
 class TokenResponse(BaseModel):
     access_token: str
