@@ -26,6 +26,8 @@ from app.routes import (
     public_solutions_router,
     exam_configs_router,
     global_notifications_router,
+    activity_logs_router,
+    admin_activity_logs_router,
 )
 
 
@@ -90,6 +92,9 @@ app.include_router(test_attempts_router, prefix="/api")
 # Exam Configurations (admin manages exam data for rank prediction)
 app.include_router(exam_configs_router, prefix="/api")
 app.include_router(global_notifications_router, prefix="/api")
+# Activity logs (app usage events, pre-login activity linked to the user at login)
+app.include_router(activity_logs_router, prefix="/api")
+app.include_router(admin_activity_logs_router, prefix="/api")
 
 
 @app.get("/")
