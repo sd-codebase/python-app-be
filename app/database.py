@@ -63,6 +63,16 @@ async def connect_to_mongo():
     await db.global_notifications.create_index("id", unique=True)
     await db.global_notifications.create_index("api_version")
 
+    # Activity logs (kept forever, no TTL); event_id is unique so retried batches don't duplicate
+    await db.activity_logs.create_index("event_id", unique=True)
+    await db.activity_logs.create_index([("device_id", 1), ("client_ts", -1)])
+    await db.activity_logs.create_index([("user_id", 1), ("client_ts", -1)])
+    await db.activity_logs.create_index([("session_id", 1), ("seq", 1)])
+    await db.activity_logs.create_index([("client_ts", -1)])
+    await db.activity_logs.create_index([("name", 1), ("client_ts", -1)])
+    await db.activity_logs.create_index("props.phone", sparse=True)
+    await db.activity_devices.create_index("device_id", unique=True)
+
 
 async def close_mongo_connection():
     global client

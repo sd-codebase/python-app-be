@@ -14,6 +14,7 @@ from app.routes.test_attempts import router as test_attempts_router
 from app.routes.public import router as public_router, solutions_router as public_solutions_router
 from app.routes.exam_configs import router as exam_configs_router
 from app.routes.global_notifications import router as global_notifications_router
+from app.routes.activity_logs import router as activity_logs_router, admin_router as admin_activity_logs_router
 
 __all__ = [
     "courses_router",
@@ -33,4 +34,6 @@ __all__ = [
     "public_solutions_router",
     "exam_configs_router",
     "global_notifications_router",
+    "activity_logs_router",
+    "admin_activity_logs_router",
 ]
