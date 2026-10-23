@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
@@ -103,3 +103,38 @@ class ActivityDeviceResponse(BaseModel):
     last_user_id: Optional[str] = None
     first_seen: datetime
     last_seen: datetime
+
+
+class ActivityLogRangeSummary(BaseModel):
+    end_date: date
+    count: int
+    oldest_ts: Optional[datetime] = None
+
+
+class ActivityLogPurgeResponse(BaseModel):
+    end_date: date
+    deleted: int
+
+
+class ActivityUserSummary(BaseModel):
+    user_id: str
+    full_name: Optional[str] = None
+    whatsapp_number: Optional[str] = None
+    user_type: Optional[str] = None
+    events: int
+    sessions: int
+    devices: int
+    first_ts: datetime
+    last_ts: datetime
+    last_event: Optional[str] = None
+    last_screen: Optional[str] = None
+    app_variant: Optional[str] = None
+    app_version: Optional[str] = None
+    pre_login_events: int = 0
+    errors: int = 0
+    tests_submitted: int = 0
+
+
+class ActivityUserSummaryList(BaseModel):
+    items: List[ActivityUserSummary]
+    total: int
