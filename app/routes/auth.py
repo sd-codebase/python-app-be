@@ -1,3 +1,4 @@
+import re
 from datetime import datetime, timedelta
 from uuid import uuid4
 from fastapi import APIRouter, HTTPException, Depends, status, Request
@@ -14,17 +15,58 @@ from app.models.user import (
     UpdateWhatsAppRequest,
     VerifyUpdateWhatsAppRequest,
     UpdateNameRequest,
+    AdminLoginRequest,
     TokenResponse,
     UserResponse,
     UserRole,
 )
-from app.utils.security import create_access_token
+from app.utils.security import create_access_token, verify_password
 from app.utils.otp import generate_otp, get_otp_expiry, is_otp_valid
 from app.utils.whatsapp import send_whatsapp_otp
 from app.dependencies import get_current_active_user, security
 from app.config import settings
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+@router.post("/login", response_model=APIResponse[TokenResponse])
+@limiter.limit("5/minute")
+async def admin_login(request: Request, data: AdminLoginRequest):
+    """Email + password login for the admin panel. Admin accounts only; students use WhatsApp OTP."""
+    db = get_database()
+    invalid = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid email or password",
+    )
+
+    # Emails are stored as typed, so match exactly but ignore case
+    user = await db.users.find_one({"email": {"$regex": f"^{re.escape(data.email)}$", "$options": "i"}})
+    if not user or not user.get("password_hash"):
+        raise invalid
+
+    if not verify_password(data.password, user["password_hash"]):
+        raise invalid
+
+    # Same error as a wrong password, so this can't be used to find out which emails are admins
+    if user.get("role") != UserRole.ADMIN:
+        raise invalid
+
+    if not user.get("is_active"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account is deactivated",
+        )
+
+    access_token = create_access_token(user["id"], user["role"])
+
+    return {
+        "data": {
+            "access_token": access_token,
+            "token_type": "bearer",
+            "role": user["role"],
+        },
+        "message": "Login successful",
+    }
 
 
 @router.post("/send-whatsapp-otp", response_model=APIResponse)
