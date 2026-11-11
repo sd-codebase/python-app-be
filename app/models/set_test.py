@@ -26,6 +26,11 @@ class Section(BaseModel):
     negative_marks: float = Field(ge=0, default=0)
     is_numerical: bool = False
     difficulty: Difficulty
+    # JEE Advanced only (None for NEET / JEE Main = original behaviour):
+    # restrict the section to these question types, e.g. ["Single Correct"]
+    question_types: Optional[List[str]] = None
+    # scoring scheme, e.g. "jee_adv_multi" for official partial marking
+    scoring: Optional[str] = None
 
 
 class SubjectSection(BaseModel):

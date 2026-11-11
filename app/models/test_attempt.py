@@ -44,6 +44,10 @@ class QuestionResult(BaseModel):
     correct_answer: str
     user_answer: Optional[str]
     is_correct: bool
+    # Added for per-question scoring (JEE Advanced partial marking); optional
+    marks_awarded: Optional[float] = None
+    status: Optional[str] = None  # correct | partial | wrong | unanswered
+    type: Optional[str] = None
 
 
 class SubmitTestResponse(BaseModel):
@@ -55,6 +59,7 @@ class SubmitTestResponse(BaseModel):
     correct_count: int
     wrong_count: int
     unanswered: int
+    partial_count: int = 0  # JEE Advanced multi-correct partial marks; 0 elsewhere
     score: float
     max_score: float
     percentage: float

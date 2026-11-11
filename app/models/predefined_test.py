@@ -30,6 +30,9 @@ class PredefinedTestQuestion(BaseModel):
     answer: str
     marks_per_question: float = 4.0
     negative_marks: float = 1.0
+    # JEE Advanced only; None for NEET / JEE Main
+    type: Optional[str] = None
+    scoring: Optional[str] = None
 
 
 # Response Models - Admin
@@ -106,6 +109,7 @@ class QuestionForAttempt(BaseModel):
     options: Optional[dict] = None
     has_integer_answer: Optional[bool] = False
     user_answer: Optional[str] = None
+    type: Optional[str] = None  # JEE Advanced only
 
 
 class PredefinedTestAttemptResponse(BaseModel):
