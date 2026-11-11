@@ -41,6 +41,9 @@ class TestQuestion(BaseModel):
     user_answer: Optional[str] = None
     marks_per_question: float = 4.0
     negative_marks: float = 1.0
+    # JEE Advanced only; None for NEET / JEE Main
+    type: Optional[str] = None
+    scoring: Optional[str] = None
 
 
 # Response Models
@@ -61,6 +64,7 @@ class QuestionMinimal(BaseModel):
     """Minimal question info without heavy data."""
     question_id: str
     has_integer_answer: Optional[bool] = False
+    type: Optional[str] = None  # JEE Advanced only
 
 
 class TestMetadataResponse(BaseModel):
@@ -85,6 +89,7 @@ class QuestionForTaking(BaseModel):
     options: Optional[dict] = None
     has_integer_answer: Optional[bool] = False
     user_answer: Optional[str] = None
+    type: Optional[str] = None  # JEE Advanced only
 
 
 class TestDetailResponse(BaseModel):

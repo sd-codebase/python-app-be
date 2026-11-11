@@ -3,6 +3,7 @@ from uuid import uuid4
 from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Depends, status
 
+from app.utils.grading import score_question, STATUS_CORRECT, STATUS_PARTIAL, STATUS_WRONG
 from app.database import get_database
 from app.models.response import APIResponse
 from app.models.test_attempt import (
@@ -98,6 +99,7 @@ async def submit_test(
     results = []
     correct_count = 0
     wrong_count = 0
+    partial_count = 0
     score = 0.0
     max_score = 0.0
 
@@ -113,14 +115,24 @@ async def submit_test(
 
         max_score += q_marks
 
-        is_correct = user_answer is not None and user_answer == correct_answer
+        # Per-question scoring. NEET / JEE Main questions have no type and no scoring
+        # scheme, so this is the original rule (+marks exact match, -negative wrong).
+        q_type = q.get("type")
+        awarded, q_status = score_question(
+            user_answer, correct_answer, q_marks, q_negative,
+            question_type=q_type,
+            has_integer_answer=has_integer_answer,
+            scoring=q.get("scoring"),
+        )
+        is_correct = q_status == STATUS_CORRECT
+        score += awarded
 
-        if is_correct:
+        if q_status == STATUS_CORRECT:
             correct_count += 1
-            score += q_marks
-        elif user_answer is not None and user_answer != "":
+        elif q_status == STATUS_PARTIAL:
+            partial_count += 1
+        elif q_status == STATUS_WRONG:
             wrong_count += 1
-            score -= q_negative
 
         results.append({
             "question_id": question_id,
@@ -128,10 +140,13 @@ async def submit_test(
             "correct_answer": correct_answer,
             "user_answer": user_answer,
             "is_correct": is_correct,
+            "marks_awarded": awarded,
+            "status": q_status,
+            "type": q_type,
         })
 
     total = test["total_questions"]
-    unanswered = total - correct_count - wrong_count
+    unanswered = total - correct_count - wrong_count - partial_count
     percentage = (score / max_score) * 100 if max_score > 0 else 0
 
     # Get representative marks for storing (use first question's marks or test-level)
@@ -168,6 +183,7 @@ async def submit_test(
         "correct_count": correct_count,
         "wrong_count": wrong_count,
         "unanswered": unanswered,
+        "partial_count": partial_count,
         "score": score,
         "max_score": max_score,
         "percentage": round(percentage, 2),
@@ -196,6 +212,7 @@ async def submit_test(
             "correct_count": correct_count,
             "wrong_count": wrong_count,
             "unanswered": unanswered,
+            "partial_count": partial_count,
             "score": score,
             "max_score": max_score,
             "percentage": round(percentage, 2),

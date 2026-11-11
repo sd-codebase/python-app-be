@@ -24,21 +24,21 @@ async def get_questions_for_topic(topic_id: str) -> List[dict]:
     """Get active questions for a topic using direct query."""
     db = get_database()
     # Match where is_active is not explicitly False (includes True, None, missing)
-    cursor = db.questions.find({"topic_id": topic_id, "is_active": {"$ne": False}})
+    cursor = db.questions.find({"topic_id": topic_id, "is_active": {"$ne": False}, "answer": {"$nin": ["", None]}})
     return await cursor.to_list(length=None)
 
 
 async def get_questions_for_chapter(chapter_id: str) -> List[dict]:
     """Get active questions for a chapter using direct chapter_id field."""
     db = get_database()
-    cursor = db.questions.find({"chapter_id": chapter_id, "is_active": {"$ne": False}})
+    cursor = db.questions.find({"chapter_id": chapter_id, "is_active": {"$ne": False}, "answer": {"$nin": ["", None]}})
     return await cursor.to_list(length=None)
 
 
 async def get_questions_for_subject(subject_id: str) -> List[dict]:
     """Get active questions for a subject using direct subject_id field."""
     db = get_database()
-    cursor = db.questions.find({"subject_id": subject_id, "is_active": {"$ne": False}})
+    cursor = db.questions.find({"subject_id": subject_id, "is_active": {"$ne": False}, "answer": {"$nin": ["", None]}})
     return await cursor.to_list(length=None)
 
 
@@ -50,7 +50,7 @@ async def get_questions_for_course(course_id: str) -> List[dict]:
     active_count = await db.questions.count_documents({"course_id": course_id, "is_active": {"$ne": False}})
     print(f"[DEBUG] get_questions_for_course({course_id}): total={total_count}, active={active_count}")
 
-    cursor = db.questions.find({"course_id": course_id, "is_active": {"$ne": False}})
+    cursor = db.questions.find({"course_id": course_id, "is_active": {"$ne": False}, "answer": {"$nin": ["", None]}})
     questions = await cursor.to_list(length=None)
     print(f"[DEBUG] Fetched {len(questions)} questions for course {course_id}")
     return questions
@@ -129,6 +129,11 @@ def select_questions_for_section(questions: List[dict], section: dict) -> List[d
     else:
         filtered = [q for q in questions if not q.get("has_integer_answer", False)]
 
+    # Optional type filter (JEE Advanced sections); absent for NEET / JEE Main
+    question_types = section.get("question_types")
+    if question_types:
+        filtered = [q for q in filtered if q.get("type") in question_types]
+
     print(f"[DEBUG] After is_numerical filter: {len(filtered)} questions")
 
     if not filtered:
@@ -203,7 +208,9 @@ async def generate_predefined_test_background(test_id: str, set_test: dict, refe
                     has_integer_answer=q.get("has_integer_answer", False),
                     answer=q["answer"],
                     marks_per_question=marks_per_question,
-                    negative_marks=negative_marks
+                    negative_marks=negative_marks,
+                    type=q.get("type"),
+                    scoring=set_test.get("scoring")
                 ).model_dump())
 
         elif test_type == "chapter":
@@ -229,7 +236,9 @@ async def generate_predefined_test_background(test_id: str, set_test: dict, refe
                     has_integer_answer=q.get("has_integer_answer", False),
                     answer=q["answer"],
                     marks_per_question=marks_per_question,
-                    negative_marks=negative_marks
+                    negative_marks=negative_marks,
+                    type=q.get("type"),
+                    scoring=set_test.get("scoring")
                 ).model_dump())
 
         elif test_type == "subject":
@@ -247,7 +256,9 @@ async def generate_predefined_test_background(test_id: str, set_test: dict, refe
                         has_integer_answer=q.get("has_integer_answer", False),
                         answer=q["answer"],
                         marks_per_question=section_marks,
-                        negative_marks=section_negative
+                        negative_marks=section_negative,
+                        type=q.get("type"),
+                        scoring=section.get("scoring")
                     ).model_dump())
 
         elif test_type == "course":
@@ -301,7 +312,9 @@ async def generate_predefined_test_background(test_id: str, set_test: dict, refe
                             has_integer_answer=q.get("has_integer_answer", False),
                             answer=q["answer"],
                             marks_per_question=section_marks,
-                            negative_marks=section_negative
+                            negative_marks=section_negative,
+                            type=q.get("type"),
+                            scoring=section.get("scoring")
                         ).model_dump())
 
             if not test_questions:

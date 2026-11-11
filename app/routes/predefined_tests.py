@@ -3,6 +3,7 @@ from uuid import uuid4
 from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Depends, status
 
+from app.utils.grading import answers_match
 from app.database import get_database
 from app.models.response import APIResponse
 from app.utils.rank_prediction import get_rank_prediction_from_test
@@ -220,7 +221,8 @@ async def start_test_attempt(
                 question=full_q.get("question", ""),
                 options=full_q.get("options"),
                 has_integer_answer=q.get("has_integer_answer", False),
-                user_answer=q.get("user_answer")
+                user_answer=q.get("user_answer"),
+                type=full_q.get("type"),
             ).model_dump())
 
         return {
@@ -249,6 +251,8 @@ async def start_test_attempt(
             "has_integer_answer": q.get("has_integer_answer", False),
             "correct_answer": q["answer"],
             "user_answer": None,
+            "type": q.get("type"),
+            "scoring": q.get("scoring"),
         }
         for q in test["questions"]
     ]
@@ -290,7 +294,8 @@ async def start_test_attempt(
             question=full_q.get("question", ""),
             options=full_q.get("options"),
             has_integer_answer=q.get("has_integer_answer", False),
-            user_answer=None
+            user_answer=None,
+            type=full_q.get("type"),
         ).model_dump())
 
     return {
@@ -348,7 +353,8 @@ async def get_attempt(
             question=full_q.get("question", ""),
             options=full_q.get("options"),
             has_integer_answer=q.get("has_integer_answer", False),
-            user_answer=q.get("user_answer")
+            user_answer=q.get("user_answer"),
+            type=full_q.get("type"),
         ).model_dump())
 
     return {
@@ -453,7 +459,7 @@ async def submit_attempt(
     for q in attempt["questions"]:
         user_answer = user_answers_map.get(q["question_id"], q.get("user_answer"))
         correct_answer = q["correct_answer"]
-        is_correct = user_answer is not None and user_answer == correct_answer
+        is_correct = answers_match(user_answer, correct_answer, q.get("type"), q.get("has_integer_answer"))
 
         if is_correct:
             correct_count += 1
@@ -638,7 +644,7 @@ async def review_attempt(
             question_id=q["question_id"],
             user_answer=q.get("user_answer"),
             correct_answer=q["correct_answer"],
-            is_correct=q.get("user_answer") is not None and q.get("user_answer") == q["correct_answer"]
+            is_correct=answers_match(q.get("user_answer"), q["correct_answer"], q.get("type"), q.get("has_integer_answer"))
         ).model_dump()
         for q in attempt["questions"]
     ]
