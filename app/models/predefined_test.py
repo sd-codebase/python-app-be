@@ -76,6 +76,7 @@ class QuestionMinimalPredefined(BaseModel):
     """Minimal question info without heavy data."""
     question_id: str
     has_integer_answer: Optional[bool] = False
+    type: Optional[str] = None  # JEE Advanced only
 
 
 class PredefinedTestUserResponse(BaseModel):
