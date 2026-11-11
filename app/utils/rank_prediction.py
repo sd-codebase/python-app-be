@@ -99,7 +99,8 @@ def calculate_rank(percentile: float, total_candidates: int) -> int:
     return max(1, rank)
 
 
-def calculate_rank_range(predicted_rank: int, margin_percent: float = 10.0) -> Tuple[int, int]:
+def calculate_rank_range(predicted_rank: int, margin_percent: float = 10.0,
+                         total_candidates: Optional[int] = None) -> Tuple[int, int]:
     """
     Calculate rank range with a margin of error.
 
@@ -113,6 +114,10 @@ def calculate_rank_range(predicted_rank: int, margin_percent: float = 10.0) -> T
     margin = int(predicted_rank * margin_percent / 100)
     lower = max(1, predicted_rank - margin)
     upper = predicted_rank + margin
+    if total_candidates:
+        # A rank can never be worse than the number of candidates
+        upper = min(upper, total_candidates)
+        lower = min(lower, upper)
     return lower, upper
 
 
@@ -176,7 +181,8 @@ async def predict_rank(
     predicted_rank = calculate_rank(percentile, total_candidates)
 
     # Calculate rank range
-    rank_lower, rank_upper = calculate_rank_range(predicted_rank)
+    predicted_rank = min(predicted_rank, total_candidates) if total_candidates else predicted_rank
+    rank_lower, rank_upper = calculate_rank_range(predicted_rank, total_candidates=total_candidates)
 
     return PredictionResult(
         percentile=percentile,
@@ -294,6 +300,11 @@ async def get_rank_prediction_from_test(
     Returns:
         Dictionary with prediction data, or None if not applicable
     """
+    # Only a full mock (course test) predicts an exam rank; a subject / chapter / topic
+    # score does not represent the whole exam.
+    if test_type != "course":
+        return None
+
     exam_type = await get_exam_type_from_course(db, test_type, reference_id)
     if not exam_type:
         return None
