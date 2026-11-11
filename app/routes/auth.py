@@ -465,42 +465,15 @@ async def logout(
 @router.post("/anonymous", response_model=APIResponse[TokenResponse])
 @limiter.limit("10/minute")
 async def anonymous_access(request: Request):
-    """Create anonymous/temp user and return access token."""
-    db = get_database()
-    now = datetime.utcnow()
-    user_id = str(uuid4())
+    """Guest (anonymous) access has been removed; students must sign in.
 
-    user_doc = {
-        "id": user_id,
-        "full_name": "User",
-        "email": f"temp_{user_id}@anonymous.local",
-        "password_hash": None,
-        "role": UserRole.USER,
-        "user_type": "temp",
-        "plan": "Free",
-        "is_active": True,
-        "is_verified": True,
-        "whatsapp_number": None,
-        "country_code": None,
-        "otp_code": None,
-        "otp_expiry": None,
-        "created_at": now,
-        "updated_at": now,
-    }
-
-    await db.users.insert_one(user_doc)
-
-    # 24-hour token (1440 minutes)
-    access_token = create_access_token(user_id, UserRole.USER, expires_minutes=1440)
-
-    return {
-        "data": {
-            "access_token": access_token,
-            "token_type": "bearer",
-            "role": UserRole.USER,
-        },
-        "message": "Anonymous access granted"
-    }
+    Older app versions still call this endpoint from their "Skip Login" button,
+    so it answers with a clear message instead of creating a temp user.
+    """
+    raise HTTPException(
+        status_code=status.HTTP_410_GONE,
+        detail="Guest access is no longer available. Please sign in with your WhatsApp number.",
+    )
 
 
 @router.delete("/delete-my-account", response_model=APIResponse)
