@@ -56,7 +56,14 @@ def answers_match(user_answer: Optional[str], correct_answer: Optional[str],
     rule: user_answer is not None and user_answer == correct_answer.
     """
     if question_type is None:
-        return user_answer is not None and user_answer == correct_answer
+        if user_answer is not None and user_answer == correct_answer:
+            return True
+        # NEET / JEE Main keys like "b,d": the exam accepted either option, so a
+        # single chosen option that is one of them is correct.
+        if (user_answer is not None and correct_answer and "," in str(correct_answer)
+                and "," not in str(user_answer) and str(user_answer).strip() != ""):
+            return str(user_answer).strip().lower() in _option_set(correct_answer)
+        return False
 
     # JEE Advanced: never award marks for a blank answer or a blank key.
     if _is_blank(user_answer) or _is_blank(correct_answer):

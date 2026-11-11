@@ -20,8 +20,14 @@ MULTI = "Multiple Correct"
 # ---------------------------------------------------------------------------
 # NEET / JEE Main: no type, no scoring -> must equal the original inline rule
 # ---------------------------------------------------------------------------
+def _either_option(user, correct):
+    """Keys like "b,d" (NTA accepted either option): one listed option is correct."""
+    return (user is not None and correct is not None and "," in correct and "," not in user
+            and user.strip() != "" and user.strip().lower() in [c.strip().lower() for c in correct.split(",")])
+
+
 def _original(user, correct, marks, negative):
-    is_correct = user is not None and user == correct
+    is_correct = user is not None and (user == correct or _either_option(user, correct))
     if is_correct:
         return marks, STATUS_CORRECT
     if user is not None and user != "":
@@ -35,7 +41,16 @@ def test_untyped_matches_original_rule_exhaustively():
         for marks, negative in [(4, 1), (4, 0), (3, 1)]:
             got = score_question(user, correct, marks, negative)
             assert got == _original(user, correct, float(marks), float(negative)), (user, correct, got)
-            assert answers_match(user, correct) == (user is not None and user == correct)
+            assert answers_match(user, correct) == (user is not None and (user == correct or _either_option(user, correct)))
+
+
+def test_untyped_two_option_key_accepts_either():
+    assert answers_match("b", "b,d")
+    assert answers_match("d", "b, d")
+    assert not answers_match("a", "b,d")
+    assert not answers_match("", "b,d")
+    assert score_question("d", "b,d", 4, 1) == (4.0, STATUS_CORRECT)
+    assert score_question("a", "b,d", 4, 1) == (-1.0, STATUS_WRONG)
 
 
 # ---------------------------------------------------------------------------
