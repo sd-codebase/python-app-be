@@ -35,6 +35,13 @@ async def get_question_public(request: Request, question_id: str):
         if topic:
             resources_directory = topic.get("resources_directory")
 
+    # Passage for comprehension questions (JEE Advanced only; NEET / JEE Main have no paragraph_id)
+    paragraph = None
+    if question.get("paragraph_id"):
+        paragraph_doc = await db.paragraphs.find_one({"id": question["paragraph_id"]})
+        if paragraph_doc and paragraph_doc.get("content"):
+            paragraph = {"id": paragraph_doc["id"], "content": paragraph_doc["content"]}
+
     # Build public response with only required fields
     public_question = {
         "id": question["id"],
@@ -44,6 +51,8 @@ async def get_question_public(request: Request, question_id: str):
         "resources_directory": resources_directory,
         "level": question.get("level") or 0,
         "pyo": question.get("pyo"),
+        "type": question.get("type"),
+        "paragraph": paragraph,
     }
 
     return {"data": public_question, "message": "Question retrieved successfully"}
