@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException, Depends, status, BackgroundTasks, 
 
 from app.utils.grading import answers_match
 from app.database import get_database
+from app.utils.question_order import order_like_paper
 from app.utils.rate_limiter import limiter
 from app.utils.rank_prediction import get_rank_prediction_from_test
 from app.models.response import APIResponse
@@ -135,11 +136,11 @@ def select_questions_for_section(questions: List[dict], section: dict) -> List[d
         questions = [q for q in questions if q.get("type") in question_types]
 
     if difficulty:
-        return select_questions_by_difficulty(questions, difficulty)
+        return order_like_paper(select_questions_by_difficulty(questions, difficulty))
 
     # Fallback to random selection based on question_count
     count = section.get("question_count", 10)
-    return random.sample(questions, min(count, len(questions)))
+    return order_like_paper(random.sample(questions, min(count, len(questions))))
 
 
 async def get_reference_name(test_type: str, reference_id: str) -> str:
@@ -194,6 +195,8 @@ async def generate_test_background(test_id: str, set_test: dict, reference_id: s
             else:
                 selected = random.sample(all_questions, min(question_count, len(all_questions)))
 
+            selected = order_like_paper(selected)  # JEE Advanced: A/B/C/D order; others unchanged
+
             marks_per_question = set_test.get("marks_per_question", 4.0)
             negative_marks = set_test.get("negative_marks", 1.0)
 
@@ -223,6 +226,8 @@ async def generate_test_background(test_id: str, set_test: dict, reference_id: s
                 selected = select_questions_by_difficulty(all_questions, difficulty)
             else:
                 selected = random.sample(all_questions, min(question_count, len(all_questions)))
+
+            selected = order_like_paper(selected)  # JEE Advanced: A/B/C/D order; others unchanged
 
             marks_per_question = set_test.get("marks_per_question", 4.0)
             negative_marks = set_test.get("negative_marks", 1.0)
