@@ -62,6 +62,12 @@ class Question(QuestionBase):
         from_attributes = True
 
 
+class PublicParagraph(BaseModel):
+    """Passage shared by comprehension questions (JEE Advanced only)."""
+    id: str
+    content: str
+
+
 class PublicQuestion(BaseModel):
     """Public question response with limited fields."""
     id: str
@@ -71,6 +77,9 @@ class PublicQuestion(BaseModel):
     resources_directory: Optional[str] = None
     level: int = 0
     pyo: Optional[str] = None
+    # JEE Advanced only; always None for NEET / JEE Main questions.
+    type: Optional[str] = None
+    paragraph: Optional[PublicParagraph] = None
 
     class Config:
         from_attributes = True

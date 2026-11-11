@@ -88,6 +88,7 @@ async def run_migration():
     - data/subjects/subjects.json
     - data/chapters/chapters.json
     - data/topics/topics.json
+    - data/paragraphs/paragraphs.json (optional; JEE Advanced passages)
     - data/questions/*.json (multiple files supported)
 
     Only available in development environment.
@@ -121,6 +122,7 @@ async def run_migration():
         "subjects": {"inserted": 0, "skipped": 0},
         "chapters": {"inserted": 0, "skipped": 0},
         "topics": {"inserted": 0, "skipped": 0},
+        "paragraphs": {"inserted": 0, "skipped": 0},
         "questions": {"inserted": 0, "skipped": 0},
     }
 
@@ -251,6 +253,35 @@ async def run_migration():
         except Exception:
             summary["topics"]["skipped"] += 1
 
+    # 4b. Migrate Paragraphs (passages shared by comprehension questions).
+    # Only JEE Advanced exports have this file; NEET / JEE Main skip it.
+    paragraphs_file = DATA_DIR / "paragraphs" / "paragraphs.json"
+    paragraphs_data = load_json_file(paragraphs_file) if paragraphs_file.exists() else []
+
+    for paragraph in paragraphs_data:
+        old_topic_id = paragraph.get("topic_id")
+        new_topic_id = id_mappings["topics"].get(old_topic_id, old_topic_id) if old_topic_id else None
+        chapter_id = parent_lookups["topic_to_chapter"].get(new_topic_id) if new_topic_id else None
+        subject_id = parent_lookups["chapter_to_subject"].get(chapter_id) if chapter_id else None
+        course_id = parent_lookups["subject_to_course"].get(subject_id) if subject_id else None
+
+        doc = {
+            "id": paragraph.get("id") or str(uuid4()),
+            "content": paragraph.get("content"),
+            "topic_id": new_topic_id,
+            "chapter_id": chapter_id,
+            "subject_id": subject_id,
+            "course_id": course_id,
+            "created_at": parse_datetime(paragraph.get("created_at")),
+            "updated_at": parse_datetime(paragraph.get("updated_at")),
+        }
+
+        try:
+            await db.paragraphs.insert_one(doc)
+            summary["paragraphs"]["inserted"] += 1
+        except Exception:
+            summary["paragraphs"]["skipped"] += 1
+
     # 5. Migrate Questions (multiple files)
     questions_dir = DATA_DIR / "questions"
     questions_data = load_json_files_from_dir(questions_dir)
@@ -287,6 +318,10 @@ async def run_migration():
             "review_in_app": question.get("review_in_app", False),
             "sr_no": question.get("sr_no"),
             "pyo": question.get("pyo"),
+            # JEE Advanced only: question type (e.g. "True/False", "Subjective") and
+            # optional link to a passage in the paragraphs collection. None for NEET / JEE Main.
+            "type": question.get("type"),
+            "paragraph_id": question.get("paragraph_id"),
             "extra": parse_json_field(question.get("extra")),
             "topic_id": new_topic_id,
             "chapter_id": chapter_id,
@@ -342,10 +377,12 @@ async def clear_all_data():
         "subjects": 0,
         "chapters": 0,
         "topics": 0,
+        "paragraphs": 0,
         "questions": 0,
     }
 
     deleted["questions"] = (await db.questions.delete_many({})).deleted_count
+    deleted["paragraphs"] = (await db.paragraphs.delete_many({})).deleted_count
     deleted["topics"] = (await db.topics.delete_many({})).deleted_count
     deleted["chapters"] = (await db.chapters.delete_many({})).deleted_count
     deleted["subjects"] = (await db.subjects.delete_many({})).deleted_count
