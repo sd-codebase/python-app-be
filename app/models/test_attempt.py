@@ -81,6 +81,7 @@ class AttemptHistoryResponse(BaseModel):
     correct_count: int
     wrong_count: int
     unanswered: int
+    partial_count: int = 0  # JEE Advanced partial marks; 0 elsewhere
     score: float
     max_score: float
     percentage: float
@@ -99,6 +100,7 @@ class AttemptDetailResponse(BaseModel):
     correct_count: int
     wrong_count: int
     unanswered: int
+    partial_count: int = 0  # JEE Advanced partial marks; 0 elsewhere
     score: float
     max_score: float
     percentage: float
