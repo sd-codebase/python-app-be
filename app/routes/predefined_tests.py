@@ -155,7 +155,8 @@ async def get_predefined_test(
     minimal_questions = [
         {
             "question_id": q["question_id"],
-            "has_integer_answer": q.get("has_integer_answer", False)
+            "has_integer_answer": q.get("has_integer_answer", False),
+            "type": q.get("type"),
         }
         for q in test.get("questions", [])
     ]
