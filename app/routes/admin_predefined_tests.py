@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException, Depends, status, BackgroundTasks
 
 from app.database import get_database
 from app.utils.question_order import order_like_paper
+from app.utils.section_pool import filter_by_chapters, top_up
 from app.models.response import APIResponse
 from app.models.predefined_test import (
     PredefinedTestStatus,
@@ -137,12 +138,15 @@ def select_questions_for_section(questions: List[dict], section: dict) -> List[d
 
     print(f"[DEBUG] After is_numerical filter: {len(filtered)} questions")
 
+    # Optional chapter pool (MPSC chapter groups); absent = original behaviour
+    filtered = filter_by_chapters(filtered, section)
+
     if not filtered:
         return []
 
     # Select by difficulty if specified
     if difficulty and any(difficulty.values()):
-        selected = select_questions_by_difficulty(filtered, difficulty)
+        selected = top_up(select_questions_by_difficulty(filtered, difficulty), filtered, section)
         print(f"[DEBUG] After difficulty selection: {len(selected)} questions")
         return order_like_paper(selected)
 

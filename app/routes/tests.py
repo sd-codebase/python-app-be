@@ -8,6 +8,7 @@ from fastapi import APIRouter, HTTPException, Depends, status, BackgroundTasks, 
 from app.utils.grading import answers_match
 from app.database import get_database
 from app.utils.question_order import order_like_paper
+from app.utils.section_pool import filter_by_chapters, top_up
 from app.utils.rate_limiter import limiter
 from app.utils.rank_prediction import get_rank_prediction_from_test
 from app.models.response import APIResponse
@@ -135,8 +136,12 @@ def select_questions_for_section(questions: List[dict], section: dict) -> List[d
     if question_types:
         questions = [q for q in questions if q.get("type") in question_types]
 
+    # Optional chapter pool (MPSC chapter groups); absent = original behaviour
+    questions = filter_by_chapters(questions, section)
+
     if difficulty:
-        return order_like_paper(select_questions_by_difficulty(questions, difficulty))
+        selected = select_questions_by_difficulty(questions, difficulty)
+        return order_like_paper(top_up(selected, questions, section))
 
     # Fallback to random selection based on question_count
     count = section.get("question_count", 10)
