@@ -31,6 +31,10 @@ class Section(BaseModel):
     question_types: Optional[List[str]] = None
     # scoring scheme, e.g. "jee_adv_multi" for official partial marking
     scoring: Optional[str] = None
+    # Optional chapter pool: draw this section's questions only from these
+    # chapters (e.g. "3 questions from this group of chapters").
+    # None = whole subject/course (original behaviour).
+    chapter_ids: Optional[List[str]] = None
 
 
 class SubjectSection(BaseModel):
