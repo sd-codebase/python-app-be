@@ -18,7 +18,7 @@ from app.models.set_test import (
     SetTestResponse,
     SetTestListResponse,
 )
-from app.dependencies import get_current_active_user
+from app.dependencies import get_current_active_user, require_admin
 
 router = APIRouter(prefix="/set-tests", tags=["set-tests"])
 
@@ -108,7 +108,7 @@ async def get_set_test(
 @router.post("/topic", response_model=APIResponse[SetTestResponse], status_code=201)
 async def create_topic_test(
     request: TopicTestCreate,
-    current_user: dict = Depends(get_current_active_user)
+    current_user: dict = Depends(require_admin)
 ):
     """Create a new topic test configuration template."""
     db = get_database()
@@ -142,7 +142,7 @@ async def create_topic_test(
 @router.post("/chapter", response_model=APIResponse[SetTestResponse], status_code=201)
 async def create_chapter_test(
     request: ChapterTestCreate,
-    current_user: dict = Depends(get_current_active_user)
+    current_user: dict = Depends(require_admin)
 ):
     """Create a new chapter test configuration template."""
     db = get_database()
@@ -176,7 +176,7 @@ async def create_chapter_test(
 @router.post("/subject", response_model=APIResponse[SetTestResponse], status_code=201)
 async def create_subject_test(
     request: SubjectTestCreate,
-    current_user: dict = Depends(get_current_active_user)
+    current_user: dict = Depends(require_admin)
 ):
     """Create a new subject test configuration template."""
     db = get_database()
@@ -207,7 +207,7 @@ async def create_subject_test(
 @router.post("/course", response_model=APIResponse[SetTestResponse], status_code=201)
 async def create_course_test(
     request: CourseTestCreate,
-    current_user: dict = Depends(get_current_active_user)
+    current_user: dict = Depends(require_admin)
 ):
     """Create a new course test configuration template."""
     db = get_database()
@@ -239,7 +239,7 @@ async def create_course_test(
 async def update_topic_test(
     set_test_id: str,
     request: TopicTestUpdate,
-    current_user: dict = Depends(get_current_active_user)
+    current_user: dict = Depends(require_admin)
 ):
     """Update a topic test configuration template."""
     db = get_database()
@@ -273,7 +273,7 @@ async def update_topic_test(
 async def update_chapter_test(
     set_test_id: str,
     request: ChapterTestUpdate,
-    current_user: dict = Depends(get_current_active_user)
+    current_user: dict = Depends(require_admin)
 ):
     """Update a chapter test configuration template."""
     db = get_database()
@@ -307,7 +307,7 @@ async def update_chapter_test(
 async def update_subject_test(
     set_test_id: str,
     request: SubjectTestUpdate,
-    current_user: dict = Depends(get_current_active_user)
+    current_user: dict = Depends(require_admin)
 ):
     """Update a subject test configuration template."""
     db = get_database()
@@ -341,7 +341,7 @@ async def update_subject_test(
 async def update_course_test(
     set_test_id: str,
     request: CourseTestUpdate,
-    current_user: dict = Depends(get_current_active_user)
+    current_user: dict = Depends(require_admin)
 ):
     """Update a course test configuration template."""
     db = get_database()
@@ -374,7 +374,7 @@ async def update_course_test(
 @router.delete("/{set_test_id}", response_model=APIResponse[None])
 async def delete_set_test(
     set_test_id: str,
-    current_user: dict = Depends(get_current_active_user)
+    current_user: dict = Depends(require_admin)
 ):
     """Delete a set test configuration."""
     db = get_database()
