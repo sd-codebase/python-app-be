@@ -19,22 +19,12 @@ class ExamConfigBase(BaseModel):
     is_active: bool = Field(default=True, description="Whether this config is active")
 
 
-class ExamConfigCreate(ExamConfigBase):
-    pass
-
-
-class ExamConfigUpdate(BaseModel):
-    exam_max_score: Optional[int] = None
-    total_candidates: Optional[int] = None
-    score_percentile: Optional[List[ScorePercentilePoint]] = None
-    data_year: Optional[str] = None
-    is_active: Optional[bool] = None
-
-
 class ExamConfig(ExamConfigBase):
-    id: str
-    created_at: datetime
-    updated_at: datetime
+    # Configs are written directly to the database (no write API), so these
+    # metadata fields may be absent.
+    id: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
