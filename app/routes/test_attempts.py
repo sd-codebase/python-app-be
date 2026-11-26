@@ -271,6 +271,7 @@ async def get_attempt_history(
                 "score": a["score"],
                 "max_score": a["max_score"],
                 "percentage": a["percentage"],
+                "time_taken_seconds": a.get("time_taken_seconds"),
                 "submitted_at": a["submitted_at"],
                 "rank_prediction": a.get("rank_prediction"),
             }
@@ -367,6 +368,7 @@ async def get_attempts_for_test(
                 "score": a["score"],
                 "max_score": a["max_score"],
                 "percentage": a["percentage"],
+                "time_taken_seconds": a.get("time_taken_seconds"),
                 "submitted_at": a["submitted_at"],
                 "rank_prediction": a.get("rank_prediction"),
             }
