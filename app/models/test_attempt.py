@@ -85,6 +85,7 @@ class AttemptHistoryResponse(BaseModel):
     score: float
     max_score: float
     percentage: float
+    time_taken_seconds: Optional[int] = None  # shown on the activity cards; older attempts may not have it
     submitted_at: datetime
     rank_prediction: Optional[RankPrediction] = None
 
