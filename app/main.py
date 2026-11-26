@@ -27,6 +27,8 @@ from app.routes import (
     global_notifications_router,
     activity_logs_router,
     admin_activity_logs_router,
+    question_reports_router,
+    admin_question_reports_router,
 )
 
 
@@ -93,6 +95,9 @@ app.include_router(global_notifications_router, prefix="/api")
 # Activity logs (app usage events, pre-login activity linked to the user at login)
 app.include_router(activity_logs_router, prefix="/api")
 app.include_router(admin_activity_logs_router, prefix="/api")
+# Question reports (students report a question from review; admins triage)
+app.include_router(question_reports_router, prefix="/api")
+app.include_router(admin_question_reports_router, prefix="/api")
 
 
 @app.get("/")
