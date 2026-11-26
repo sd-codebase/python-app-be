@@ -166,13 +166,11 @@ async def link_device_activity(
     data: ActivityLinkRequest,
     current_user: dict = Depends(get_current_active_user),
 ):
-    """Attach this device's pre-login (and guest) activity to the user who just logged in."""
-    if current_user.get("user_type") == "temp":
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Guest sessions cannot claim activity",
-        )
+    """Attach this device's pre-login activity to the user who just logged in.
 
+    Also claims events from old guest sessions on this device (user_type "temp"),
+    which may still exist in the activity log from before guest access was removed.
+    """
     db = get_database()
     now = datetime.utcnow()
 

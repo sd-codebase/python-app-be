@@ -11,7 +11,6 @@ class UserRole(str, Enum):
 
 class UserType(str, Enum):
     REGULAR = "regular"
-    TEMP = "temp"
 
 
 class UserBase(BaseModel):
