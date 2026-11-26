@@ -66,6 +66,11 @@ async def connect_to_mongo():
     await db.activity_logs.create_index("props.phone", sparse=True)
     await db.activity_devices.create_index("device_id", unique=True)
 
+    # Question reports
+    await db.question_reports.create_index("id", unique=True)
+    await db.question_reports.create_index([("question_id", 1), ("user_id", 1), ("status", 1)])
+    await db.question_reports.create_index([("status", 1), ("created_at", -1)])
+
 
 async def close_mongo_connection():
     global client
