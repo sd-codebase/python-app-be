@@ -207,7 +207,7 @@ async def delete_user(
     user_id: str,
     admin_user: dict = Depends(require_admin)
 ):
-    """Delete a user and all associated data. Admin only. Only temporary or inactive users can be deleted."""
+    """Delete a user and all associated data. Admin only. Only inactive users can be deleted."""
     db = get_database()
 
     # Prevent admin from deleting themselves
@@ -224,14 +224,11 @@ async def delete_user(
             detail="User not found"
         )
 
-    # Only allow deletion of temporary or inactive users
-    is_temp = existing.get("user_type") == "temp"
-    is_inactive = not existing.get("is_active", True)
-
-    if not is_temp and not is_inactive:
+    # Only allow deletion of inactive users
+    if existing.get("is_active", True):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Only temporary or inactive users can be deleted"
+            detail="Only inactive users can be deleted"
         )
 
     # Delete user's generated tests
