@@ -31,32 +31,41 @@ router = APIRouter(prefix="/user-tests", tags=["user-generated-tests"])
 
 
 # Helper functions to get questions
+# Only the fields test generation needs (id, answer, type, level, section/chapter filters, passage order).
+# Loading full documents (question text, options, solutions) for every active question of a course made
+# test generation heavy once the banks grew to 150k+ questions.
+SELECTION_FIELDS = {
+    "_id": 0, "id": 1, "answer": 1, "has_integer_answer": 1, "type": 1, "level": 1,
+    "subject_id": 1, "chapter_id": 1, "topic_id": 1, "paragraph_id": 1,
+}
+
+
 async def get_questions_for_topic(topic_id: str) -> List[dict]:
     """Get active questions for a topic using direct query."""
     db = get_database()
     # Match where is_active is not explicitly False (includes True, None, missing)
-    cursor = db.questions.find({"topic_id": topic_id, "is_active": {"$ne": False}, "answer": {"$nin": ["", None]}})
+    cursor = db.questions.find({"topic_id": topic_id, "is_active": {"$ne": False}, "answer": {"$nin": ["", None]}}, SELECTION_FIELDS)
     return await cursor.to_list(length=None)
 
 
 async def get_questions_for_chapter(chapter_id: str) -> List[dict]:
     """Get active questions for a chapter using direct chapter_id field."""
     db = get_database()
-    cursor = db.questions.find({"chapter_id": chapter_id, "is_active": {"$ne": False}, "answer": {"$nin": ["", None]}})
+    cursor = db.questions.find({"chapter_id": chapter_id, "is_active": {"$ne": False}, "answer": {"$nin": ["", None]}}, SELECTION_FIELDS)
     return await cursor.to_list(length=None)
 
 
 async def get_questions_for_subject(subject_id: str) -> List[dict]:
     """Get active questions for a subject using direct subject_id field."""
     db = get_database()
-    cursor = db.questions.find({"subject_id": subject_id, "is_active": {"$ne": False}, "answer": {"$nin": ["", None]}})
+    cursor = db.questions.find({"subject_id": subject_id, "is_active": {"$ne": False}, "answer": {"$nin": ["", None]}}, SELECTION_FIELDS)
     return await cursor.to_list(length=None)
 
 
 async def get_questions_for_course(course_id: str) -> List[dict]:
     """Get active questions for a course using direct course_id field."""
     db = get_database()
-    cursor = db.questions.find({"course_id": course_id, "is_active": {"$ne": False}, "answer": {"$nin": ["", None]}})
+    cursor = db.questions.find({"course_id": course_id, "is_active": {"$ne": False}, "answer": {"$nin": ["", None]}}, SELECTION_FIELDS)
     return await cursor.to_list(length=None)
 
 
