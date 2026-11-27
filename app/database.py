@@ -41,6 +41,10 @@ async def connect_to_mongo():
         ("created_at", -1)
     ])
 
+    # Question lookups used by test generation (course/subject/chapter/topic pools of active questions)
+    for field in ("course_id", "subject_id", "chapter_id", "topic_id"):
+        await db.questions.create_index([(field, 1), ("is_active", 1)])
+
     # Predefined tests indexes
     await db.predefined_tests.create_index("id", unique=True)
     await db.predefined_tests.create_index("status")
