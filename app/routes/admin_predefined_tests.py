@@ -123,6 +123,14 @@ def select_questions_by_difficulty(questions: List[dict], difficulty: dict) -> L
                     for q in fallback_selected:
                         used_fallback_ids.add(q.get("id"))
 
+    # Shortfall fill: if a level (and the level-less pool) ran short, top up from the rest of the
+    # pool at any level, so the test still gets its full question count when the pool has enough.
+    wanted = sum(v for v in difficulty.values() if isinstance(v, int) and v > 0)
+    if len(selected) < wanted:
+        used = {q.get("id") for q in selected}
+        rest = [q for q in questions if q.get("id") not in used]
+        selected.extend(random.sample(rest, min(wanted - len(selected), len(rest))))
+
     random.shuffle(selected)
     return selected
 

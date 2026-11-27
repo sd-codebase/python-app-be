@@ -16,10 +16,11 @@ def sec(n, chapters=None, diff=None):
     return s
 
 
-def test_no_chapter_ids_is_original_behaviour():
-    # only 10 L1 questions exist: original behaviour returns 10, no top-up
+def test_no_chapter_ids_short_level_is_filled():
+    # only 10 L1 questions exist: all 10 L1 are used and the shortfall (5) is filled from other levels
     got = select_questions_for_section(POOL, sec(15))
-    assert len(got) == 10 and all(x["level"] == 1 for x in got)
+    assert len(got) == 15 and len({x["id"] for x in got}) == 15
+    assert sum(1 for x in got if x["level"] == 1) == 10
 
 
 def test_chapter_pool_restricts_chapters():
@@ -44,3 +45,17 @@ if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):
             fn(); print("ok", name)
+
+
+def test_difficulty_shortfall_is_filled_from_other_levels():
+    from app.routes.tests import select_questions_by_difficulty
+    pool = [{"id": f"a{i}", "level": 1} for i in range(8)] + [{"id": "b0", "level": 2}]
+    sel = select_questions_by_difficulty(pool, {"L1": 2, "L2": 3, "L3": 2})
+    assert len(sel) == 7 and len({q["id"] for q in sel}) == 7
+
+
+def test_difficulty_shortfall_never_exceeds_pool():
+    from app.routes.tests import select_questions_by_difficulty
+    pool = [{"id": "x", "level": 3}, {"id": "y", "level": 1}]
+    sel = select_questions_by_difficulty(pool, {"L1": 5, "L2": 5, "L3": 5})
+    assert len(sel) == 2
